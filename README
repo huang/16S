@@ -23,7 +23,7 @@ core_diversity_analyses.py -o./core_diversity_e5000 -i./clustering/otu_table_mc2
 cat map_corrected.txt | grep -v "S63_merged.fasta" | grep -v "S62_merged.fasta" | grep -v "S61_merged.fasta" | grep -v "S40_merged.fasta" | grep -v "S52_merged.fasta" | grep -v "S46_merged.fasta" | grep -v "S53_merged.fasta" | grep -v "S58_merged.fasta" | grep -v "S57_merged.fasta" | grep -v "S28_merged.fasta" | grep -v "S56_merged.fasta" | grep -v "S37_merged.fasta" | grep -v "S34_merged.fasta" | grep -v "S29_merged.fasta" | grep -v "S32_merged.fasta" | grep -v "S78_merged.fasta" > map_corrected_e7720.txt
 
 
-#12. run Phyloseq.Rmd to get Phyloseq.html
+#12. run Phyloseq.Rmd to get Phyloseq.html (under qiime1-env)
 #https://github.com/vaulot/R_tutorials/tree/master/phyloseq
 cp ~/DATA/Data_Laura_16S/core_diversity_e5347/Phyloseq.Rmd ./
 
