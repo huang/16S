@@ -1,0 +1,1378 @@
+---
+title: "Phyloseq microbiome sampling in a cohort study"
+author: ""
+date: '`r format(Sys.time(), "%d %m %Y")`'
+header-includes:
+   - \usepackage{color, fancyvrb}
+output:
+  rmdformats::readthedown:
+    highlight: kate
+    number_sections : yes    
+  pdf_document: 
+    toc: yes
+    toc_depth: 2
+    number_sections : yes
+---
+
+```{r knitr_init, echo=FALSE, warning=FALSE, cache=TRUE}
+library(knitr)
+library(rmdformats)
+library("kableExtra")  # NOTE: if disrupt, repeat the line!
+## Global options
+# TODO: reproduce the html with the additional figure/SVN-files for editing.
+# IMPORTANT NOTE: needs before "mkdir figures"
+#p2.stool.d25: 927,000 < 4769, the sample is thrown!!
+#https://github.com/vaulot/R_tutorials/blob/master/phyloseq/Phyloseq_tutorial.Rmd
+#rmarkdown::render('Phyloseq.Rmd',output_file='Phyloseq.html')
+# Exp8 --> Exp17
+# experiment 27 --> experiment 17
+# 23336 --> 23336
+# otu_table(ps.ng.tax_rel)[,1] <- otu_table(ps.ng.tax_rel)[,1]/4
+# ...
+# Differential abundance analysis needs giving specified IDs
+# HSD_HH --> Fate_HSD_HH, or delete 'Fate_' in map_corrected.txt??
+# with only 8 OTUS --> with only xx OTUS?? --> 11 OTUS
+# NOTE that we have to define the sampleName without no substring of a SampleName in another. 
+#setwd("~/DATA/Data_Fran_16S_Exp17/core_diversity_e23336")
+#gunzip table_even23336.biom.gz
+#mkdir figures
+#alpha_diversity.py -i table_even23336.biom --metrics chao1,observed_otus,shannon,PD_whole_tree -o adiv_even23336.txt -t ../clustering/rep_set.tre
+#quit()
+#rmarkdown::render('Phyloseq_Exp17.Rmd',output_file='Phyloseq_Exp17.html')
+# The following line is necessary to make sure that 
+# everything is not reevaluated each time the file is knit
+# Note : in the case of this report it is necessary to leave cache= FALSE
+options(max.print="75")
+knitr::opts_chunk$set(fig.width=8, 
+                      fig.height=6, 
+                      eval=TRUE, 
+                      cache=TRUE,
+                      echo=TRUE,
+                      prompt=FALSE,
+                      tidy=TRUE,
+                      comment=NA,
+                      message=FALSE,
+                      warning=FALSE)
+opts_knit$set(width=85)
+# Phyloseq R library
+#* Phyloseq web site : https://joey711.github.io/phyloseq/index.html
+#* See in particular tutorials for
+#    - importing data: https://joey711.github.io/phyloseq/import-data.html
+#    - heat maps: https://joey711.github.io/phyloseq/plot_heatmap-examples.html
+```
+# Aim
+
+This document contains the microbiome analyses in a cohort study.
+
+# Data  
+
+Import raw data and assign sample key:
+
+```{r, echo=FALSE, warning=FALSE}
+#extend map_corrected.txt with Diet and Flora
+#setwd("~/DATA/Data_Laura_16S_2/core_diversity_e4769")
+map_corrected <- read.csv("../map_corrected_e4769.txt", sep="\t", row.names=1)
+kable(map_corrected) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+# Prerequisites to be installed
+
+* R : https://pbil.univ-lyon1.fr/CRAN/
+* R studio : https://www.rstudio.com/products/rstudio/download/#download
+
+```R
+install.packages("dplyr")     # To manipulate dataframes
+install.packages("readxl")    # To read Excel files into R
+install.packages("ggplot2")   # for high quality graphics
+source("https://bioconductor.org/biocLite.R")
+biocLite("phyloseq")
+```
+
+```{r libraries, echo=FALSE, message=FALSE}
+#library("phyloseq")
+#library("ggplot2")      # graphics
+#library("readxl")       # necessary to import the data from Excel file
+#library("dplyr")        # filter and reformat data frames
+library("ggplot2")
+library("picante")
+library("microbiome") # data analysis and visualisation
+library("phyloseq") # also the basis of data object. Data analysis and visualisation
+library("ggpubr") # publication quality figures, based on ggplot2
+library("dplyr") # data handling  
+library("RColorBrewer") # nice color options
+```
+
+# Read the data and create phyloseq objects
+
+Three tables are needed
+
+* OTU
+* Taxonomy
+* Samples
+
+```{r, echo=FALSE, warning=FALSE}
+    #Change your working directory to where the files are located
+    ps.ng.tax <- import_biom("./table_even4769.biom", "../clustering/rep_set.tre")
+    sample <- read.csv("../map_corrected_e4769.txt", sep="\t", row.names=1)
+    SAM = sample_data(sample, errorIfNULL = T)
+    ps.ng.tax <- merge_phyloseq(ps.ng.tax, SAM)
+    print(ps.ng.tax)
+    otu_table(ps.ng.tax)
+    # ID01 ID03 ID11 ID12 ID02 ID16 ID15 ID04 ID05 ID08    ID10 ID09 ID07 ID14 ID18 ID06 ID17
+    #colnames(sample_data(ps.ng.tax)) <- c("03","01","02","16","12","11","15","04","05","08","10","14","09","06","18","07","17")
+    colnames(tax_table(ps.ng.tax)) <- c("Domain","Phylum","Class","Order","Family","Genus","Species")
+    saveRDS(ps.ng.tax, "./ps.ng.tax.rds")
+```
+
+Visualize data
+```{r, echo=FALSE, warning=FALSE}
+  sample_names(ps.ng.tax)
+  rank_names(ps.ng.tax)
+  sample_variables(ps.ng.tax)
+```
+
+Normalize number of reads in each sample using median sequencing depth.
+```{r, echo=FALSE, warning=FALSE}
+# RAREFACTION
+#set.seed(9242)  # This will help in reproducing the filtering and nomalisation. 
+#ps.ng.tax <- rarefy_even_depth(ps.ng.tax, sample.size = 23336)
+#total <- 23336
+
+# NORMALIZE number of reads in each sample using median sequencing depth.
+total = median(sample_sums(ps.ng.tax))
+standf = function(x, t=total) round(t * (x / sum(x)))
+ps.ng.tax = transform_sample_counts(ps.ng.tax, standf)
+ps.ng.tax_rel <- microbiome::transform(ps.ng.tax, "compositional") 
+
+saveRDS(ps.ng.tax, "./ps.ng.tax.rds")
+hmp.meta <- meta(ps.ng.tax)
+hmp.meta$sam_name <- rownames(hmp.meta)
+```
+
+The number of reads used for normalization is **`r sprintf("%.0f", total)`**. 
+
+\pagebreak
+
+
+# Heatmaps
+
+A basic heatmap using the default parameters.
+```{r, echo=FALSE, warning=FALSE}
+  plot_heatmap(ps.ng.tax, method = "NMDS", distance = "bray")
+```
+
+\pagebreak
+
+It is very cluttered.  It is better to only consider the most abundant OTUs for heatmaps. For example one can only take OTUs that represent at least 1% of reads in at least one sample. Remember we normalized all the sampples to median number of reads (total).  We are left with only 158 OTUS which makes the reading much more easy.
+```{r, echo=FALSE, warning=FALSE}
+  #NOTE that giving the correct OTU numbers!!!!
+  ps.ng.tax_abund <- phyloseq::filter_taxa(ps.ng.tax, function(x) sum(x > total*0.01) > 0, TRUE)
+  kable(otu_table(ps.ng.tax_abund)) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+  plot_heatmap(ps.ng.tax_abund, method = "NMDS", distance = "bray")
+  #It is possible to use different distances and different multivaraite methods. Many different built-in distances can be used.
+  #dist_methods <- unlist(distanceMethodList)
+  #print(dist_methods)
+```
+
+\pagebreak
+
+
+
+
+# Taxonomic summary
+Bar plots in phylum level
+```{r, echo=FALSE, warning=FALSE}
+library(ggplot2)
+#Make the bargraph nicer by removing OTUs boundaries. This is done by adding ggplot2 modifier.
+# 1: uniform color. Color is for the border, fill is for the inside
+#ggplot(mtcars, aes(x=as.factor(cyl) )) +
+#  geom_bar(color="blue", fill=rgb(0.1,0.4,0.5,0.7) )
+# 2: Using Hue
+#ggplot(mtcars, aes(x=as.factor(cyl), fill=as.factor(cyl) )) + 
+#  geom_bar( ) +
+#  scale_fill_hue(c = 40) +
+#  theme(legend.position="none")
+# 3: Using RColorBrewer
+#ggplot(mtcars, aes(x=as.factor(cyl), fill=as.factor(cyl) )) + 
+#  geom_bar( ) +
+#  scale_fill_brewer(palette = "Set1") +
+#  theme(legend.position="none")
+# 4: Using greyscale:
+#ggplot(mtcars, aes(x=as.factor(cyl), fill=as.factor(cyl) )) + 
+#  geom_bar( ) +
+#  scale_fill_grey(start = 0.25, end = 0.75) +
+#  theme(legend.position="none")
+# 5: Set manualy
+#ggplot(mtcars, aes(x=as.factor(cyl), fill=as.factor(cyl) )) +  
+#  geom_bar( ) +
+#  scale_fill_manual(values = c("red", "green", "blue") ) +
+#  theme(legend.position="none")
+#NOT SUCCESSFUL!
+#allGroupsColors<- c(
+#  "grey0", "grey50", "dodgerblu", "deepskyblue",
+#  "red", "darkred", "green", "green4")
+#  plot_bar(ps.ng.tax_rel, fill="Phylum") + 
+#  geom_bar(stat="identity", position="stack") + scale_color_manual(values = allGroupsColors) #, fill=Phylum   + scale_fill_brewer(palette = "Set1")
+  # ##### Keep only the most abundant phyla and 
+  #ps.ng.tax_most <- subset_taxa(ps.ng.tax_rel, Phylum %in% c("D_1__Actinobacteria")) #1.57
+  #ps.ng.tax_most <- subset_taxa(ps.ng.tax_rel, Phylum %in% c("D_1__Bacteroidetes"))  #27.27436
+  #ps.ng.tax_most <- subset_taxa(ps.ng.tax_rel, Phylum %in% c("D_1__Cyanobacteria"))  #0.02244249
+  #ps.ng.tax_most <- subset_taxa(ps.ng.tax_rel, Phylum %in% c("D_1__Epsilonbacteraeota"))  #0.01309145
+  #ps.ng.tax_most <- subset_taxa(ps.ng.tax_rel, Phylum %in% c("D_1__Euryarchaeota"))  #0.1210024
+  #ps.ng.tax_most <- subset_taxa(ps.ng.tax_rel, Phylum %in% c("D_1__Firmicutes"))     #32.50589
+  #ps.ng.tax_most <- subset_taxa(ps.ng.tax_rel, Phylum %in% c("D_1__Lentisphaerae"))  #0.0001870208
+  #ps.ng.tax_most <- subset_taxa(ps.ng.tax_rel, Phylum %in% c("D_1__Patescibacteria")) #0.008789976
+  #ps.ng.tax_most <- subset_taxa(ps.ng.tax_rel, Phylum %in% c("D_1__Planctomycetes")) #0.01365252
+  #ps.ng.tax_most <- subset_taxa(ps.ng.tax_rel, Phylum %in% c("D_1__Proteobacteria")) #6.769216
+  #ps.ng.tax_most <- subset_taxa(ps.ng.tax_rel, Phylum %in% c("D_1__Synergistetes"))  #0.005049561 
+  #ps.ng.tax_most <- subset_taxa(ps.ng.tax_rel, Phylum %in% c("D_1__Tenericutes"))    #0.0005610623
+  #ps.ng.tax_most <- subset_taxa(ps.ng.tax_rel, Phylum %in% c("D_1__Verrucomicrobia"))  #2.076304
+  #ps.ng.tax_most <- subset_taxa(ps.ng.tax_rel, Phylum %in% c(NA))  #sum(otu_table(ps.ng.tax_most)) = 2.619413
+  geom.text.size = 6
+  theme.size = 8 #(14/5) * geom.text.size
+  #ps.ng.tax_most <- subset_taxa(ps.ng.tax_rel, Phylum %in% c("D_1__Actinobacteria", "D_1__Bacteroidetes", "D_1__Firmicutes", "D_1__Proteobacteria", "D_1__Verrucomicrobia", NA))
+  ps.ng.tax_most = phyloseq::filter_taxa(ps.ng.tax_rel, function(x) mean(x) > 0.001, TRUE)
+  #CONSOLE(OPTIONAL): for sampleid in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73; do
+  #echo "otu_table(ps.ng.tax_most)[,${sampleid}]=otu_table(ps.ng.tax_most)[,${sampleid}]/sum(otu_table(ps.ng.tax_most)[,${sampleid}])" done
+  #OR
+  ps.ng.tax_most_ = transform_sample_counts(ps.ng.tax_most, function(x) x / sum(x))
+  
+  
+  ##--Creating 100% stacked bar plots with less abundant taxa in a sub-category #901--
+  ##https://github.com/joey711/phyloseq/issues/901
+  ##ps.ng.tax_most_df <- psmelt(ps.ng.tax_most_)  #5986x19
+  #glom <- tax_glom(ps.ng.tax_most_, taxrank = 'Phylum')
+  #tax_table(glom) # should list # taxa as # phyla
+  #data <- psmelt(glom) # create dataframe from phyloseq object
+  #data$Phylum <- as.character(data$Phylum) #convert to character
+  ##simple way to rename phyla with < 1% abundance
+  #data$Phylum[data$Abundance < 0.001] <- "< 0.1% abund."
+  #
+  #library(plyr)
+  #medians <- ddply(data, ~Phylum, function(x) c(median=median(x$Abundance)))
+  #remainder <- medians[medians$median <= 0.001,]$Phylum
+  #data[data$Phylum %in% remainder,]$Phylum <- "Phyla < 0.1% abund."
+  #data$Phylum[data$Abundance < 0.001] <- "Phyla < 0.1% abund."
+  ##--> data are not used!
+  #
+  ##in class level
+  #glom <- tax_glom(ps.ng.tax_most_, taxrank = 'Class')
+  #tax_table(glom) # should list # taxa as # phyla
+  #data <- psmelt(glom) # create dataframe from phyloseq object
+  #data$Class <- as.character(data$Class) #convert to character
+  #
+  ##simple way to rename phyla with < 1% abundance
+  #data$Class[data$Abundance < 0.001] <- "< 0.1% abund."
+  #Count = length(unique(data$Class))
+  # 
+  ##unique(data$Class)
+  ##data$Class <- factor(data$Class, levels = c("Bacilli", "Bacteroidia", "Verrucomicrobiae", "Clostridia", "Gammaproteobacteria", "Alphaproteobacteria", "Actinobacteria", "Negativicutes", "Erysipelotrichia", "Methanobacteria", "< 0.1% abund."))
+  ##------- Creating 100% stacked bar plots END --------
+
+  
+
+  library(stringr)
+#in total [ 94 taxa and 55 samples ]
+#for id in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85; do   
+#for id in 86 87 88 89 90 91 92 93 94; do
+#echo "tax_table(ps.ng.tax_most_)[${id},\"Phylum\"] <- str_split(tax_table(ps.ng.tax_most_)[${id},\"Phylum\"], \"__\")[[1]][2]"
+#echo "tax_table(ps.ng.tax_most_)[${id},\"Class\"] <- str_split(tax_table(ps.ng.tax_most_)[${id},\"Class\"], \"__\")[[1]][2]"
+#echo "tax_table(ps.ng.tax_most_)[${id},\"Order\"] <- str_split(tax_table(ps.ng.tax_most_)[${id},\"Order\"], \"__\")[[1]][2]"
+#echo "tax_table(ps.ng.tax_most_)[${id},\"Family\"] <- str_split(tax_table(ps.ng.tax_most_)[${id},\"Family\"], \"__\")[[1]][2]"
+#echo "tax_table(ps.ng.tax_most_)[${id},\"Genus\"] <- str_split(tax_table(ps.ng.tax_most_)[${id},\"Genus\"], \"__\")[[1]][2]"
+#done
+  
+tax_table(ps.ng.tax_most_)[1,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[1,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[1,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[1,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[1,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[1,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[1,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[1,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[1,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[1,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[2,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[2,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[2,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[2,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[2,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[2,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[2,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[2,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[2,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[2,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[3,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[3,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[3,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[3,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[3,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[3,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[3,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[3,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[3,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[3,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[4,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[4,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[4,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[4,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[4,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[4,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[4,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[4,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[4,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[4,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[5,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[5,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[5,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[5,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[5,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[5,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[5,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[5,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[5,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[5,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[6,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[6,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[6,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[6,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[6,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[6,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[6,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[6,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[6,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[6,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[7,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[7,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[7,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[7,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[7,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[7,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[7,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[7,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[7,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[7,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[8,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[8,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[8,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[8,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[8,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[8,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[8,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[8,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[8,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[8,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[9,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[9,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[9,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[9,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[9,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[9,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[9,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[9,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[9,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[9,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[10,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[10,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[10,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[10,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[10,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[10,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[10,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[10,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[10,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[10,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[11,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[11,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[11,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[11,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[11,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[11,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[11,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[11,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[11,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[11,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[12,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[12,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[12,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[12,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[12,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[12,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[12,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[12,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[12,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[12,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[13,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[13,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[13,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[13,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[13,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[13,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[13,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[13,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[13,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[13,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[14,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[14,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[14,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[14,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[14,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[14,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[14,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[14,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[14,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[14,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[15,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[15,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[15,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[15,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[15,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[15,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[15,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[15,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[15,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[15,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[16,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[16,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[16,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[16,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[16,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[16,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[16,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[16,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[16,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[16,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[17,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[17,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[17,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[17,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[17,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[17,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[17,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[17,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[17,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[17,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[18,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[18,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[18,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[18,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[18,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[18,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[18,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[18,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[18,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[18,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[19,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[19,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[19,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[19,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[19,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[19,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[19,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[19,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[19,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[19,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[20,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[20,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[20,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[20,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[20,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[20,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[20,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[20,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[20,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[20,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[21,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[21,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[21,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[21,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[21,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[21,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[21,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[21,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[21,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[21,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[22,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[22,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[22,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[22,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[22,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[22,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[22,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[22,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[22,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[22,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[23,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[23,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[23,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[23,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[23,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[23,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[23,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[23,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[23,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[23,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[24,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[24,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[24,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[24,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[24,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[24,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[24,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[24,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[24,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[24,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[25,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[25,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[25,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[25,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[25,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[25,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[25,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[25,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[25,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[25,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[26,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[26,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[26,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[26,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[26,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[26,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[26,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[26,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[26,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[26,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[27,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[27,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[27,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[27,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[27,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[27,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[27,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[27,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[27,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[27,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[28,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[28,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[28,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[28,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[28,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[28,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[28,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[28,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[28,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[28,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[29,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[29,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[29,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[29,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[29,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[29,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[29,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[29,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[29,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[29,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[30,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[30,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[30,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[30,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[30,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[30,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[30,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[30,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[30,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[30,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[31,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[31,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[31,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[31,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[31,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[31,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[31,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[31,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[31,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[31,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[32,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[32,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[32,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[32,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[32,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[32,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[32,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[32,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[32,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[32,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[33,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[33,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[33,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[33,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[33,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[33,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[33,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[33,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[33,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[33,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[34,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[34,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[34,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[34,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[34,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[34,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[34,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[34,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[34,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[34,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[35,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[35,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[35,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[35,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[35,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[35,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[35,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[35,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[35,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[35,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[36,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[36,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[36,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[36,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[36,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[36,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[36,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[36,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[36,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[36,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[37,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[37,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[37,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[37,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[37,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[37,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[37,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[37,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[37,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[37,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[38,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[38,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[38,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[38,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[38,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[38,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[38,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[38,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[38,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[38,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[39,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[39,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[39,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[39,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[39,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[39,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[39,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[39,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[39,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[39,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[40,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[40,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[40,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[40,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[40,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[40,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[40,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[40,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[40,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[40,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[41,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[41,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[41,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[41,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[41,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[41,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[41,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[41,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[41,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[41,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[42,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[42,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[42,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[42,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[42,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[42,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[42,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[42,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[42,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[42,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[43,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[43,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[43,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[43,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[43,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[43,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[43,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[43,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[43,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[43,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[44,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[44,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[44,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[44,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[44,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[44,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[44,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[44,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[44,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[44,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[45,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[45,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[45,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[45,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[45,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[45,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[45,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[45,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[45,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[45,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[46,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[46,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[46,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[46,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[46,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[46,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[46,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[46,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[46,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[46,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[47,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[47,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[47,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[47,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[47,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[47,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[47,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[47,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[47,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[47,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[48,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[48,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[48,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[48,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[48,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[48,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[48,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[48,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[48,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[48,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[49,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[49,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[49,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[49,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[49,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[49,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[49,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[49,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[49,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[49,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[50,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[50,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[50,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[50,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[50,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[50,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[50,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[50,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[50,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[50,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[51,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[51,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[51,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[51,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[51,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[51,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[51,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[51,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[51,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[51,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[52,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[52,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[52,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[52,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[52,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[52,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[52,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[52,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[52,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[52,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[53,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[53,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[53,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[53,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[53,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[53,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[53,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[53,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[53,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[53,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[54,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[54,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[54,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[54,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[54,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[54,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[54,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[54,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[54,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[54,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[55,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[55,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[55,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[55,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[55,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[55,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[55,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[55,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[55,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[55,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[56,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[56,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[56,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[56,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[56,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[56,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[56,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[56,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[56,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[56,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[57,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[57,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[57,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[57,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[57,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[57,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[57,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[57,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[57,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[57,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[58,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[58,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[58,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[58,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[58,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[58,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[58,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[58,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[58,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[58,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[59,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[59,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[59,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[59,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[59,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[59,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[59,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[59,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[59,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[59,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[60,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[60,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[60,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[60,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[60,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[60,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[60,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[60,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[60,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[60,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[61,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[61,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[61,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[61,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[61,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[61,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[61,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[61,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[61,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[61,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[62,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[62,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[62,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[62,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[62,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[62,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[62,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[62,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[62,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[62,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[63,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[63,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[63,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[63,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[63,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[63,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[63,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[63,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[63,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[63,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[64,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[64,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[64,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[64,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[64,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[64,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[64,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[64,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[64,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[64,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[65,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[65,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[65,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[65,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[65,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[65,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[65,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[65,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[65,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[65,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[66,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[66,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[66,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[66,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[66,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[66,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[66,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[66,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[66,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[66,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[67,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[67,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[67,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[67,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[67,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[67,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[67,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[67,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[67,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[67,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[68,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[68,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[68,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[68,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[68,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[68,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[68,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[68,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[68,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[68,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[69,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[69,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[69,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[69,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[69,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[69,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[69,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[69,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[69,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[69,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[70,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[70,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[70,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[70,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[70,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[70,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[70,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[70,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[70,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[70,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[71,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[71,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[71,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[71,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[71,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[71,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[71,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[71,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[71,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[71,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[72,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[72,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[72,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[72,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[72,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[72,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[72,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[72,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[72,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[72,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[73,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[73,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[73,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[73,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[73,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[73,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[73,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[73,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[73,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[73,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[74,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[74,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[74,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[74,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[74,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[74,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[74,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[74,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[74,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[74,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[75,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[75,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[75,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[75,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[75,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[75,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[75,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[75,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[75,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[75,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[76,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[76,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[76,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[76,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[76,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[76,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[76,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[76,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[76,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[76,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[77,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[77,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[77,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[77,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[77,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[77,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[77,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[77,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[77,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[77,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[78,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[78,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[78,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[78,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[78,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[78,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[78,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[78,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[78,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[78,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[79,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[79,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[79,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[79,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[79,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[79,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[79,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[79,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[79,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[79,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[80,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[80,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[80,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[80,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[80,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[80,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[80,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[80,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[80,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[80,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[81,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[81,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[81,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[81,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[81,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[81,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[81,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[81,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[81,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[81,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[82,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[82,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[82,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[82,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[82,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[82,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[82,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[82,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[82,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[82,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[83,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[83,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[83,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[83,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[83,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[83,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[83,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[83,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[83,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[83,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[84,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[84,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[84,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[84,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[84,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[84,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[84,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[84,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[84,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[84,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[85,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[85,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[85,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[85,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[85,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[85,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[85,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[85,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[85,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[85,"Genus"], "__")[[1]][2]
+
+tax_table(ps.ng.tax_most_)[86,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[86,"Phylum"], "__")[[1]][2]                                       
+tax_table(ps.ng.tax_most_)[86,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[86,"Class"], "__")[[1]][2]                                         
+tax_table(ps.ng.tax_most_)[86,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[86,"Order"], "__")[[1]][2]                                         
+tax_table(ps.ng.tax_most_)[86,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[86,"Family"], "__")[[1]][2]                                       
+tax_table(ps.ng.tax_most_)[86,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[86,"Genus"], "__")[[1]][2]                                         
+tax_table(ps.ng.tax_most_)[87,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[87,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[87,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[87,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[87,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[87,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[87,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[87,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[87,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[87,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[88,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[88,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[88,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[88,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[88,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[88,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[88,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[88,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[88,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[88,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[89,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[89,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[89,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[89,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[89,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[89,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[89,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[89,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[89,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[89,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[90,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[90,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[90,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[90,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[90,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[90,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[90,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[90,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[90,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[90,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[91,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[91,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[91,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[91,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[91,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[91,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[91,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[91,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[91,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[91,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[92,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[92,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[92,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[92,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[92,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[92,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[92,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[92,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[92,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[92,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[93,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[93,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[93,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[93,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[93,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[93,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[93,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[93,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[93,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[93,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[94,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[94,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[94,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[94,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[94,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[94,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[94,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[94,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[94,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[94,"Genus"], "__")[[1]][2]
+
+
+
+
+  #aes(color="Phylum", fill="Phylum") --> aes()
+  #png("abc.png")
+  #ggplot(data=data, aes(x=Sample, y=Abundance, fill=Phylum)) 
+  plot_bar(ps.ng.tax_most_, fill="Phylum") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = theme.size, colour="black")) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=2))
+  #knitr::include_graphics("./Phyloseq_files/figure-html/unnamed-chunk-7-1.png")
+  #dev.off()
+```
+
+
+\pagebreak
+
+Stool samples
+
+```{r, echo=FALSE, warning=FALSE}
+  ps.ng.tax_most_stool_ = subset_samples(ps.ng.tax_most_, SampleType %in% c("stool"))
+  plot_bar(ps.ng.tax_most_stool_, fill="Phylum") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = 10, colour="black"))
+```
+
+Swab samples
+
+```{r, echo=FALSE, warning=FALSE}
+  ps.ng.tax_most_swab_ = subset_samples(ps.ng.tax_most_, SampleType %in% c("swab"))
+  plot_bar(ps.ng.tax_most_swab_, fill="Phylum") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = 9, colour="black"))
+```
+
+\pagebreak
+
+Regroup together stool vs swab samples and normalize number of reads in each group using median sequencing depth.
+
+```{r, echo=FALSE, warning=FALSE}
+  ps.ng.tax_most_SampleType <- merge_samples(ps.ng.tax_most_, "SampleType")
+  ps.ng.tax_most_SampleType_ = transform_sample_counts(ps.ng.tax_most_SampleType, function(x) x / sum(x))
+  #plot_bar(ps.ng.tax_most_SampleType_, fill = "Phylum") + geom_bar(aes(color=Phylum, fill=Phylum), stat="identity", position="stack")
+  plot_bar(ps.ng.tax_most_SampleType_, fill="Phylum") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = theme.size, colour="black"))
+  #knitr::include_graphics("./Phyloseq_files/figure-html/unnamed-chunk-8-1.png")
+```
+
+
+\pagebreak
+
+
+Use color according to phylum. Do separate panels Patient and RoundDay for stool.
+```{r, echo=FALSE, warning=FALSE}
+  #sum(otu_table(ps.ng.tax_most)) == 70.19581, sum(otu_table(ps.ng.tax_rel)) == 73
+  #otu_table(ps.ng.tax_most)
+  # ID01 ID03 ID11 ID12 ID02 ID16 ID15 ID04 ID05 ID08    ID10 ID09 ID07 ID14 ID18 ID06 ID17
+
+  #-- If existing replicates, to be processed as follows --
+  #-- There are no replicates in the second batch of 16S data for Laura, commented them --
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00")]/2
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00r")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00r")]/2 
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20")]/2
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20r")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20r")]/2 
+  #plot_bar(ps.ng.tax_most_stool_, x="Phylum", fill = "Phylum", facet_grid = Patient~RoundDay) + geom_bar(aes(color=Phylum, fill=Phylum), stat="identity", position="stack") + theme(axis.text = element_text(size = theme.size, colour="black"))
+  plot_bar(ps.ng.tax_most_stool_, x="Phylum", fill="Phylum", facet_grid = Patient~RoundDay2) + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = 6, colour="black"), axis.text.x=element_blank(), axis.ticks=element_blank()) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=2)) 
+  #+ labs(x="")
+  #theme(axis.line=element_blank(),
+  #    axis.text.x=element_blank(),
+  #    axis.text.y=element_blank(),
+  #    axis.ticks=element_blank(),
+  #    axis.title.x=element_blank(),
+  #    axis.title.y=element_blank(),
+  #    legend.position="none",
+  #    panel.background=element_blank(),
+  #    panel.border=element_blank(),
+  #    panel.grid.major=element_blank(),
+  #    panel.grid.minor=element_blank(),
+  #    plot.background=element_blank())
+  # 
+  #knitr::include_graphics("./Phyloseq_files/figure-html/unnamed-chunk-9-1.png")
+  #> tax_table(carbom)
+  #Taxonomy Table:     [205 taxa by 7 taxonomic ranks]:
+  #     Domain      Supergroup       Division      Class                 
+  #Otu001 "Eukaryota" "Archaeplastida" "Chlorophyta" "Mamiellophyceae"    
+  #       Order                      Family                 Genus     
+  #Otu001 "Mamiellales"              "Bathycoccaceae"       "Ostreococcus"
+  #sample_data(ps.ng.tax)
+```
+
+
+Use color according to phylum. Do separate panels Patient and RoundDay for swab.
+```{r, echo=FALSE, warning=FALSE} 
+  #otu_table(ps.ng.tax_most_swab_)[,c("p3.swab.d32")] <- otu_table(ps.ng.tax_most_swab_)[,c("p3.swab.d32")]/4
+  #otu_table(ps.ng.tax_most_swab_)[,c("p3.swab.d67")] <- otu_table(ps.ng.tax_most_swab_)[,c("p3.swab.d67")]/4 
+  #otu_table(ps.ng.tax_most_swab_)[,c("p3.swab.d75")] <- otu_table(ps.ng.tax_most_swab_)[,c("p3.swab.d72")]/4
+  #otu_table(ps.ng.tax_most_swab_)[,c("p3.swab.d81")] <- otu_table(ps.ng.tax_most_swab_)[,c("p3.swab.d81")]/4 
+  #otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d34")] <- otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d34")]/3
+  #otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d41")] <- otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d41")]/3 
+  #otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d48")] <- otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d48")]/3
+  #plot_bar(ps.ng.tax_most_swab_, x="Phylum", fill = "Phylum", facet_grid = Patient~RoundDay) + geom_bar(aes(color=Phylum, fill=Phylum), stat="identity", position="stack") + theme(axis.text = element_text(size = theme.size, colour="black"))
+  plot_bar(ps.ng.tax_most_swab_, x="Phylum", fill="Phylum", facet_grid = Patient~RoundDay2) + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = 6, colour="black"), axis.text.x=element_blank(), axis.ticks=element_blank()) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=2))
+  #knitr::include_graphics("./Phyloseq_files/figure-html/unnamed-chunk-10-1.png")
+  #> tax_table(carbom)
+  #Taxonomy Table:     [205 taxa by 7 taxonomic ranks]:
+  #     Domain      Supergroup       Division      Class                 
+  #Otu001 "Eukaryota" "Archaeplastida" "Chlorophyta" "Mamiellophyceae"    
+  #       Order                      Family                 Genus     
+  #Otu001 "Mamiellales"              "Bathycoccaceae"       "Ostreococcus"
+  #sample_data(ps.ng.tax)
+```
+
+
+\pagebreak
+
+
+Bar plots in class level
+```{r, echo=FALSE, warning=FALSE}
+library(ggplot2)
+  plot_bar(ps.ng.tax_most_, fill="Class") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = theme.size, colour="black")) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=3))
+```
+\pagebreak
+
+Stool samples
+```{r, echo=FALSE, warning=FALSE}
+  ps.ng.tax_most_stool_ = subset_samples(ps.ng.tax_most_, SampleType %in% c("stool"))
+  plot_bar(ps.ng.tax_most_stool_, fill="Class") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = 10, colour="black"))
+```
+
+Swab samples
+```{r, echo=FALSE, warning=FALSE}
+  ps.ng.tax_most_swab_ = subset_samples(ps.ng.tax_most_, SampleType %in% c("swab"))
+  plot_bar(ps.ng.tax_most_swab_, fill="Class") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = 9, colour="black"))
+```
+\pagebreak
+
+Regroup together stool vs swab samples and normalize number of reads in each group using median sequencing depth.
+```{r, echo=FALSE, warning=FALSE}
+  plot_bar(ps.ng.tax_most_SampleType_, fill="Class") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = theme.size, colour="black"))
+```
+\pagebreak
+
+Use color according to class. Do separate panels Patient and RoundDay for stool.
+```{r, echo=FALSE, warning=FALSE}
+  #-- If existing replicates, to be processed as follows --
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00")]/2
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00r")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00r")]/2 
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20")]/2
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20r")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20r")]/2 
+  plot_bar(ps.ng.tax_most_stool_, x="Class", fill="Class", facet_grid = Patient~RoundDay2) + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = 6, colour="black"), axis.text.x=element_blank(), axis.ticks=element_blank()) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=3)) 
+```
+
+Use color according to class. Do separate panels Patient and RoundDay for swab.
+```{r, echo=FALSE, warning=FALSE}
+  plot_bar(ps.ng.tax_most_swab_, x="Class", fill="Class", facet_grid = Patient~RoundDay2) + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = 6, colour="black"), axis.text.x=element_blank(), axis.ticks=element_blank()) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=3))
+```
+
+
+
+Bar plots in order level
+```{r, echo=FALSE, warning=FALSE}
+library(ggplot2)
+  plot_bar(ps.ng.tax_most_, fill="Order") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = theme.size, colour="black")) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=4))
+```
+\pagebreak
+
+Stool samples
+```{r, echo=FALSE, warning=FALSE}
+  ps.ng.tax_most_stool_ = subset_samples(ps.ng.tax_most_, SampleType %in% c("stool"))
+  plot_bar(ps.ng.tax_most_stool_, fill="Order") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = 10, colour="black")) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=4))
+```
+
+Swab samples
+```{r, echo=FALSE, warning=FALSE}
+  ps.ng.tax_most_swab_ = subset_samples(ps.ng.tax_most_, SampleType %in% c("swab"))
+  plot_bar(ps.ng.tax_most_swab_, fill="Order") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = 9, colour="black")) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=4))
+```
+\pagebreak
+
+Regroup together stool vs swab samples and normalize number of reads in each group using median sequencing depth.
+```{r, echo=FALSE, warning=FALSE}
+  plot_bar(ps.ng.tax_most_SampleType_, fill="Order") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = theme.size, colour="black")) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=4))
+```
+\pagebreak
+
+Use color according to class. Do separate panels Patient and RoundDay for stool.
+```{r, echo=FALSE, warning=FALSE}
+  #-- If existing replicates, to be processed as follows --
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00")]/2
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00r")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00r")]/2 
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20")]/2
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20r")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20r")]/2 
+  plot_bar(ps.ng.tax_most_stool_, x="Order", fill="Order", facet_grid = Patient~RoundDay2) + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = 6, colour="black"), axis.text.x=element_blank(), axis.ticks=element_blank()) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=4)) 
+```
+
+Use color according to class. Do separate panels Patient and RoundDay for swab.
+```{r, echo=FALSE, warning=FALSE}
+  plot_bar(ps.ng.tax_most_swab_, x="Order", fill="Order", facet_grid = Patient~RoundDay2) + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = 6, colour="black"), axis.text.x=element_blank(), axis.ticks=element_blank()) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=4))
+```
+
+
+
+
+Bar plots in family level
+```{r, echo=FALSE, warning=FALSE}
+library(ggplot2)
+  plot_bar(ps.ng.tax_most_, fill="Family") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("#FF0000", "#000000", "#0000FF", "#C0C0C0", "#FFFFFF", "#FFFF00", "#00FFFF", "#FFA500", "#00FF00", "#808080", "#FF00FF", "#800080", "#FDD017", "#0000A0", "#3BB9FF", "#008000", "#800000", "#ADD8E6", "#F778A1", "#800517", "#736F6E", "#F52887", "#C11B17", "#5CB3FF", "#A52A2A", "#FF8040", "#2B60DE", "#736AFF", "#1589FF", "#98AFC7", "#8D38C9", "#307D7E", "#F6358A", "#151B54", "#6D7B8D", "#FDEEF4", "#FF0080", "#F88017", "#2554C7", "#FFF8C6", "#D4A017", "#306EFF", "#151B8D", "#9E7BFF", "#EAC117", "#E0FFFF", "#15317E", "#6C2DC7", "#FBB917", "#FCDFFF", "#15317E", "#254117", "#FAAFBE", "#357EC7")) + theme(axis.text = element_text(size = theme.size, colour="black")) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=8))
+```
+\pagebreak
+
+Stool samples
+```{r, echo=FALSE, warning=FALSE}
+  ps.ng.tax_most_stool_ = subset_samples(ps.ng.tax_most_, SampleType %in% c("stool"))
+  plot_bar(ps.ng.tax_most_stool_, fill="Family") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("#FF0000", "#000000", "#0000FF", "#C0C0C0", "#FFFFFF", "#FFFF00", "#00FFFF", "#FFA500", "#00FF00", "#808080", "#FF00FF", "#800080", "#FDD017", "#0000A0", "#3BB9FF", "#008000", "#800000", "#ADD8E6", "#F778A1", "#800517", "#736F6E", "#F52887", "#C11B17", "#5CB3FF", "#A52A2A", "#FF8040", "#2B60DE", "#736AFF", "#1589FF", "#98AFC7", "#8D38C9", "#307D7E", "#F6358A", "#151B54", "#6D7B8D", "#FDEEF4", "#FF0080", "#F88017", "#2554C7", "#FFF8C6", "#D4A017", "#306EFF", "#151B8D", "#9E7BFF", "#EAC117", "#E0FFFF", "#15317E", "#6C2DC7", "#FBB917", "#FCDFFF", "#15317E", "#254117", "#FAAFBE", "#357EC7")) + theme(axis.text = element_text(size = 10, colour="black")) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=8))
+```
+
+Swab samples
+```{r, echo=FALSE, warning=FALSE}
+  ps.ng.tax_most_swab_ = subset_samples(ps.ng.tax_most_, SampleType %in% c("swab"))
+  plot_bar(ps.ng.tax_most_swab_, fill="Family") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("#FF0000", "#000000", "#0000FF", "#C0C0C0", "#FFFFFF", "#FFFF00", "#00FFFF", "#FFA500", "#00FF00", "#808080", "#FF00FF", "#800080", "#FDD017", "#0000A0", "#3BB9FF", "#008000", "#800000", "#ADD8E6", "#F778A1", "#800517", "#736F6E", "#F52887", "#C11B17", "#5CB3FF", "#A52A2A", "#FF8040", "#2B60DE", "#736AFF", "#1589FF", "#98AFC7", "#8D38C9", "#307D7E", "#F6358A", "#151B54", "#6D7B8D", "#FDEEF4", "#FF0080", "#F88017", "#2554C7", "#FFF8C6", "#D4A017", "#306EFF", "#151B8D", "#9E7BFF", "#EAC117", "#E0FFFF", "#15317E", "#6C2DC7", "#FBB917", "#FCDFFF", "#15317E", "#254117", "#FAAFBE", "#357EC7")) + theme(axis.text = element_text(size = 9, colour="black")) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=8))
+```
+\pagebreak
+
+Regroup together stool vs swab samples and normalize number of reads in each group using median sequencing depth.
+```{r, echo=FALSE, warning=FALSE}
+  plot_bar(ps.ng.tax_most_SampleType_, fill="Family") + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("#FF0000", "#000000", "#0000FF", "#C0C0C0", "#FFFFFF", "#FFFF00", "#00FFFF", "#FFA500", "#00FF00", "#808080", "#FF00FF", "#800080", "#FDD017", "#0000A0", "#3BB9FF", "#008000", "#800000", "#ADD8E6", "#F778A1", "#800517", "#736F6E", "#F52887", "#C11B17", "#5CB3FF", "#A52A2A", "#FF8040", "#2B60DE", "#736AFF", "#1589FF", "#98AFC7", "#8D38C9", "#307D7E", "#F6358A", "#151B54", "#6D7B8D", "#FDEEF4", "#FF0080", "#F88017", "#2554C7", "#FFF8C6", "#D4A017", "#306EFF", "#151B8D", "#9E7BFF", "#EAC117", "#E0FFFF", "#15317E", "#6C2DC7", "#FBB917", "#FCDFFF", "#15317E", "#254117", "#FAAFBE", "#357EC7")) + theme(axis.text = element_text(size = theme.size, colour="black")) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=8))
+```
+\pagebreak
+
+Use color according to class. Do separate panels Patient and RoundDay for stool.
+```{r, echo=FALSE, warning=FALSE}
+  #-- If existing replicates, to be processed as follows --
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00")]/2
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00r")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00r")]/2 
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20")]/2
+  #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20r")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20r")]/2 
+  plot_bar(ps.ng.tax_most_stool_, x="Family", fill="Family", facet_grid = Patient~RoundDay2) + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("#FF0000", "#000000", "#0000FF", "#C0C0C0", "#FFFFFF", "#FFFF00", "#00FFFF", "#FFA500", "#00FF00", "#808080", "#FF00FF", "#800080", "#FDD017", "#0000A0", "#3BB9FF", "#008000", "#800000", "#ADD8E6", "#F778A1", "#800517", "#736F6E", "#F52887", "#C11B17", "#5CB3FF", "#A52A2A", "#FF8040", "#2B60DE", "#736AFF", "#1589FF", "#98AFC7", "#8D38C9", "#307D7E", "#F6358A", "#151B54", "#6D7B8D", "#FDEEF4", "#FF0080", "#F88017", "#2554C7", "#FFF8C6", "#D4A017", "#306EFF", "#151B8D", "#9E7BFF", "#EAC117", "#E0FFFF", "#15317E", "#6C2DC7", "#FBB917", "#FCDFFF", "#15317E", "#254117", "#FAAFBE", "#357EC7")) + theme(axis.text = element_text(size = 4, colour="black"), axis.text.x=element_blank(), axis.ticks=element_blank()) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=8)) 
+```
+
+Use color according to class. Do separate panels Patient and RoundDay for swab.
+```{r, echo=FALSE, warning=FALSE}
+  plot_bar(ps.ng.tax_most_swab_, x="Family", fill="Family", facet_grid = Patient~RoundDay2) + geom_bar(aes(), stat="identity", position="stack") +
+  scale_fill_manual(values = c("#FF0000", "#000000", "#0000FF", "#C0C0C0", "#FFFFFF", "#FFFF00", "#00FFFF", "#FFA500", "#00FF00", "#808080", "#FF00FF", "#800080", "#FDD017", "#0000A0", "#3BB9FF", "#008000", "#800000", "#ADD8E6", "#F778A1", "#800517", "#736F6E", "#F52887", "#C11B17", "#5CB3FF", "#A52A2A", "#FF8040", "#2B60DE", "#736AFF", "#1589FF", "#98AFC7", "#8D38C9", "#307D7E", "#F6358A", "#151B54", "#6D7B8D", "#FDEEF4", "#FF0080", "#F88017", "#2554C7", "#FFF8C6", "#D4A017", "#306EFF", "#151B8D", "#9E7BFF", "#EAC117", "#E0FFFF", "#15317E", "#6C2DC7", "#FBB917", "#FCDFFF", "#15317E", "#254117", "#FAAFBE", "#357EC7")) + theme(axis.text = element_text(size = 4, colour="black"), axis.text.x=element_blank(), axis.ticks=element_blank()) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=8))
+```
+
+
+
+
+```{r, echo=FALSE, warning=FALSE}
+##Bar plots in genus level
+#library(ggplot2)
+#  plot_bar(ps.ng.tax_most_, fill="Genus") + geom_bar(aes(), stat="identity", position="stack") +
+#  scale_fill_manual(values = c("#FF0000", "#000000", "#0000FF", "#C0C0C0", "#FFFFFF", "#FFFF00", "#00FFFF", "#FFA500", "#00FF00", "#808080", "#FF00FF", "#800080", "#FDD017", "#0000A0", "#3BB9FF", "#008000", "#800000", "#ADD8E6", "#F778A1", "#800517", "#736F6E", "#F52887", "#C11B17", "#5CB3FF", "#A52A2A", "#FF8040", "#2B60DE", "#736AFF", "#1589FF", "#98AFC7", "#8D38C9", "#307D7E", "#F6358A", "#151B54", "#6D7B8D", "#FDEEF4", "#FF0080", "#F88017", "#2554C7", "#FFF8C6", "#D4A017", "#306EFF", "#151B8D", "#9E7BFF", "#EAC117", "#E0FFFF", "#15317E", "#6C2DC7", "#FBB917", "#FCDFFF", "#15317E", "#254117", "#FAAFBE", "#357EC7")) + theme(axis.text = element_text(size = theme.size, colour="black")) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=18))
+```
+\pagebreak
+
+
+```{r, echo=FALSE, warning=FALSE}
+##Stool samples
+#  ps.ng.tax_most_stool_ = subset_samples(ps.ng.tax_most_, SampleType %in% c("stool"))
+#  plot_bar(ps.ng.tax_most_stool_, fill="Genus") + geom_bar(aes(), stat="identity", position="stack") +
+#  scale_fill_manual(values = c("#FF0000", "#000000", "#0000FF", "#C0C0C0", "#FFFFFF", "#FFFF00", "#00FFFF", "#FFA500", "#00FF00", "#808080", "#FF00FF", "#800080", "#FDD017", "#0000A0", "#3BB9FF", "#008000", "#800000", "#ADD8E6", "#F778A1", "#800517", "#736F6E", "#F52887", "#C11B17", "#5CB3FF", "#A52A2A", "#FF8040", "#2B60DE", "#736AFF", "#1589FF", "#98AFC7", "#8D38C9", "#307D7E", "#F6358A", "#151B54", "#6D7B8D", "#FDEEF4", "#FF0080", "#F88017", "#2554C7", "#FFF8C6", "#D4A017", "#306EFF", "#151B8D", "#9E7BFF", "#EAC117", "#E0FFFF", "#15317E", "#6C2DC7", "#FBB917", "#FCDFFF", "#15317E", "#254117", "#FAAFBE", "#357EC7")) + theme(axis.text = element_text(size = 10, colour="black")) + theme(legend.position="bottom")
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+##Swab samples
+#  plot_bar(ps.ng.tax_most_swab_, fill="Genus") + geom_bar(aes(), stat="identity", position="stack") +
+#  scale_fill_manual(values = c("#FF0000", "#000000", "#0000FF", "#C0C0C0", "#FFFFFF", "#FFFF00", "#00FFFF", "#FFA500", "#00FF00", "#808080", "#FF00FF", "#800080", "#FDD017", "#0000A0", "#3BB9FF", "#008000", "#800000", "#ADD8E6", "#F778A1", "#800517", "#736F6E", "#F52887", "#C11B17", "#5CB3FF", "#A52A2A", "#FF8040", "#2B60DE", "#736AFF", "#1589FF", "#98AFC7", "#8D38C9", "#307D7E", "#F6358A", "#151B54", "#6D7B8D", "#FDEEF4", "#FF0080", "#F88017", "#2554C7", "#FFF8C6", "#D4A017", "#306EFF", "#151B8D", "#9E7BFF", "#EAC117", "#E0FFFF", "#15317E", "#6C2DC7", "#FBB917", "#FCDFFF", "#15317E", "#254117", "#FAAFBE", "#357EC7")) + theme(axis.text = element_text(size = 9, colour="black")) + theme(legend.position="bottom")
+```
+\pagebreak
+
+
+```{r, echo=FALSE, warning=FALSE}
+##Regroup together stool vs swab samples and normalize number of reads in each group using median sequencing depth.
+#  plot_bar(ps.ng.tax_most_SampleType_, fill="Genus") + geom_bar(aes(), stat="identity", position="stack") +
+#  scale_fill_manual(values = c("#FF0000", "#000000", "#0000FF", "#C0C0C0", "#FFFFFF", "#FFFF00", "#00FFFF", "#FFA500", "#00FF00", "#808080", "#FF00FF", "#800080", "#FDD017", "#0000A0", "#3BB9FF", "#008000", "#800000", "#ADD8E6", "#F778A1", "#800517", "#736F6E", "#F52887", "#C11B17", "#5CB3FF", "#A52A2A", "#FF8040", "#2B60DE", "#736AFF", "#1589FF", "#98AFC7", "#8D38C9", "#307D7E", "#F6358A", "#151B54", "#6D7B8D", "#FDEEF4", "#FF0080", "#F88017", "#2554C7", "#FFF8C6", "#D4A017", "#306EFF", "#151B8D", "#9E7BFF", "#EAC117", "#E0FFFF", "#15317E", "#6C2DC7", "#FBB917", "#FCDFFF", "#15317E", "#254117", "#FAAFBE", "#357EC7")) + theme(axis.text = element_text(size = theme.size, colour="black")) + theme(legend.position="bottom")
+```
+\pagebreak
+
+
+```{r, echo=FALSE, warning=FALSE}
+##Use color according to class. Do separate panels Patient and RoundDay for stool.
+#  #-- If existing replicates, to be processed as follows --
+#  otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00")]/2
+#  otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00r")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00r")]/2 
+#  otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20")]/2
+#  otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20r")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20r")]/2 
+#  plot_bar(ps.ng.tax_most_stool_, x="Genus", fill="Genus", facet_grid = Patient~RoundDay) + geom_bar(aes(), stat="identity", position="stack") +
+#  scale_fill_manual(values = c("#FF0000", "#000000", "#0000FF", "#C0C0C0", "#FFFFFF", "#FFFF00", "#00FFFF", "#FFA500", "#00FF00", "#808080", "#FF00FF", "#800080", "#FDD017", "#0000A0", "#3BB9FF", "#008000", "#800000", "#ADD8E6", "#F778A1", "#800517", "#736F6E", "#F52887", "#C11B17", "#5CB3FF", "#A52A2A", "#FF8040", "#2B60DE", "#736AFF", "#1589FF", "#98AFC7", "#8D38C9", "#307D7E", "#F6358A", "#151B54", "#6D7B8D", "#FDEEF4", "#FF0080", "#F88017", "#2554C7", "#FFF8C6", "#D4A017", "#306EFF", "#151B8D", "#9E7BFF", "#EAC117", "#E0FFFF", "#15317E", "#6C2DC7", "#FBB917", "#FCDFFF", "#15317E", "#254117", "#FAAFBE", "#357EC7")) + theme(axis.text = element_text(size = 6, colour="black"), axis.text.x=element_blank(), axis.ticks=element_blank()) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=18)) 
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+##Use color according to class. Do separate panels Patient and RoundDay for swab.
+#  #http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
+#  #http://rstudio-pubs-static.s3.amazonaws.com/5312_98fc1aba2d5740dd849a5ab797cc2c8d.html
+#  plot_bar(ps.ng.tax_most_swab_, x="Genus", fill="Genus", facet_grid = Patient~RoundDay) + geom_bar(aes(), stat="identity", position="stack") +
+#  scale_fill_manual(values = c("#FF0000", "#000000", "#0000FF", "#C0C0C0", "#FFFFFF", "#FFFF00", "#00FFFF", "#FFA500", "#00FF00", "#808080", "#FF00FF", "#800080", "#FDD017", "#0000A0", "#3BB9FF", "#008000", "#800000", "#ADD8E6", "#F778A1", "#800517", "#736F6E", "#F52887", "#C11B17", "#5CB3FF", "#A52A2A", "#FF8040", "#2B60DE", "#736AFF", "#1589FF", "#98AFC7", "#8D38C9", "#307D7E", "#F6358A", "#151B54", "#6D7B8D", "#FDEEF4", "#FF0080", "#F88017", "#2554C7", "#FFF8C6", "#D4A017", "#306EFF", "#151B8D", "#9E7BFF", "#EAC117", "#E0FFFF", "#15317E", "#6C2DC7", "#FBB917", "#FCDFFF", "#15317E", "#254117", "#FAAFBE", "#357EC7")) + theme(axis.text = element_text(size = 6, colour="black"), axis.text.x=element_blank(), axis.ticks=element_blank()) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=18))
+```
+
+
+
+
+
+
+
+
+
+\pagebreak
+
+# Alpha diversity
+Plot Chao1 richness estimator, Observed OTUs, Shannon index, and Phylogenetic diversity. 
+Regroup together samples from the same Patient, from the same SampleType, from the same RoundDay.
+```{r, echo=FALSE, warning=FALSE}
+# using rarefied data
+#CONSOLE: alpha_diversity.py -i table_even4769.biom --metrics chao1,observed_otus,shannon,PD_whole_tree -o adiv_even4769.txt -t ../clustering/rep_set.tre
+hmp.div_qiime <- read.csv("adiv_even4769.txt", sep="\t") 
+colnames(hmp.div_qiime) <- c("sam_name", "chao1", "observed_otus", "shannon", "PD_whole_tree")
+row.names(hmp.div_qiime) <- hmp.div_qiime$sam_name
+div.df <- merge(hmp.div_qiime, hmp.meta, by = "sam_name")
+
+div.df2 <- div.df[, c("Patient", "chao1", "shannon", "observed_otus", "PD_whole_tree")]
+colnames(div.df2) <- c("Patient", "Chao-1", "Shannon", "OTU", "Phylogenetic Diversity")
+#colnames(div.df2)
+
+div_df_melt <- reshape2::melt(div.df2)
+#head(div_df_melt)
+
+#https://plot.ly/r/box-plots/#horizontal-boxplot
+#http://www.sthda.com/english/wiki/print.php?id=177
+#https://rpkgs.datanovia.com/ggpubr/reference/as_ggplot.html
+#http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/82-ggplot2-easy-way-to-change-graphical-parameters/
+#https://plot.ly/r/box-plots/#horizontal-boxplot
+#library("gridExtra")
+#par(mfrow=c(4,1))
+
+p <- ggboxplot(div_df_melt, x = "Patient", y = "value",
+              facet.by = "variable", 
+              scales = "free",
+              width = 0.5,
+              fill = "gray", legend= "right")
+#ggpar(p, xlab = FALSE, ylab = FALSE)
+
+
+lev <- levels(div_df_melt$Patient) # get the variables
+# make a pairwise list that we want to compare.
+#my_stat_compare_means
+#https://stackoverflow.com/questions/47839988/indicating-significance-with-ggplot2-in-a-boxplot-with-multiple-groups
+L.pairs <- combn(seq_along(lev), 2, simplify = FALSE, FUN = function(i) lev[i]) #%>% filter(p.signif != "ns")
+
+#stat.test <- compare_means(
+# RoundDay ~ Shannon, data = div.df2,
+# method = "t.test"
+#)
+p2 <- p + 
+stat_compare_means(
+  method="t.test",
+  comparisons = L.pairs,    # L.pairs 
+  label = "p.signif",
+  symnum.args <- list(cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 1), symbols = c("****", "***", "**", "*", "ns")),
+  #symnum.args <- list(cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05), symbols = c("****", "***", "**", "*")),
+  hide.ns = TRUE
+)
+#stat_pvalue_manual
+#print(p2)
+#https://stackoverflow.com/questions/20500706/saving-multiple-ggplots-from-ls-into-one-and-separate-files-in-r
+#CONSOLE: mkdir figures
+ggsave("./figures/alpha_diversity1.png", device="png", height = 10, width = 12)
+#Warning messages:
+#1: Computation failed in `stat_signif()`:
+#not enough 'y' observations 
+#2: Computation failed in `stat_signif()`:
+#not enough 'y' observations 
+#3: Computation failed in `stat_signif()`:
+#not enough 'y' observations 
+#4: Computation failed in `stat_signif()`:
+#not enough 'y' observations 
+```
+```{r, echo=FALSE, warning=FALSE, fig.cap="Alpha diversity", out.width = '100%', fig.align= "center"}
+knitr::include_graphics("./figures/alpha_diversity1.png")
+```
+
+
+
+
+```{r, echo=FALSE, warning=FALSE}
+#hmp.div_qiime <- read.csv("adiv_even4769.txt", sep="\t") 
+#colnames(hmp.div_qiime) <- c("sam_name", "chao1", "observed_otus", "shannon", "PD_whole_tree")
+#row.names(hmp.div_qiime) <- hmp.div_qiime$sam_name
+#div.df <- merge(hmp.div_qiime, hmp.meta, by = "sam_name")
+
+div.df2 <- div.df[, c("SampleType", "chao1", "shannon", "observed_otus", "PD_whole_tree")]
+colnames(div.df2) <- c("SampleType", "Chao-1", "Shannon", "OTU", "Phylogenetic Diversity")
+div_df_melt <- reshape2::melt(div.df2)
+p <- ggboxplot(div_df_melt, x = "SampleType", y = "value",
+              facet.by = "variable", 
+              scales = "free",
+              width = 0.5,
+              fill = "gray", legend= "right")
+lev <- levels(div_df_melt$SampleType)
+L.pairs <- combn(seq_along(lev), 2, simplify = FALSE, FUN = function(i) lev[i])
+p2 <- p + stat_compare_means(
+  method="t.test",
+  comparisons = L.pairs,    # L.pairs 
+  label = "p.signif",
+  symnum.args <- list(cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 1), symbols = c("****", "***", "**", "*", "ns")),
+)
+ggsave("./figures/alpha_diversity2.png", device="png", height = 10, width = 12)
+```
+```{r, echo=FALSE, warning=FALSE, fig.cap="Alpha diversity", out.width = '100%', fig.align= "center"}
+knitr::include_graphics("./figures/alpha_diversity2.png")
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+hmp.div_qiime <- read.csv("adiv_even4769.txt", sep="\t") 
+colnames(hmp.div_qiime) <- c("sam_name", "chao1", "observed_otus", "shannon", "PD_whole_tree")
+row.names(hmp.div_qiime) <- hmp.div_qiime$sam_name
+div.df <- merge(hmp.div_qiime, hmp.meta, by = "sam_name")
+div.df2 <- div.df[, c("RoundDay", "chao1", "shannon", "observed_otus", "PD_whole_tree")]
+colnames(div.df2) <- c("RoundDay", "Chao-1", "Shannon", "OTU", "Phylogenetic Diversity")
+div_df_melt <- reshape2::melt(div.df2)
+p <- ggboxplot(div_df_melt, x = "RoundDay", y = "value",
+              facet.by = "variable", 
+              scales = "free",
+              width = 0.5,
+              fill = "gray", legend= "right")
+lev <- levels(div_df_melt$RoundDay)
+L.pairs <- combn(seq_along(lev), 2, simplify = FALSE, FUN = function(i) lev[i])
+p2 <- p + stat_compare_means(
+  method="t.test",
+  comparisons = L.pairs,    # L.pairs
+  #comparisons = list(c("-", "00"), c("-", "07"),  c("-", "14"), c("-", "21"), c("-", "28"),  c("00", "07"),  c("00", "14"), c("00", "21"), c("00", "28")), 
+  label = "p.signif",
+  symnum.args <- list(cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 1), symbols = c("****", "***", "**", "*", "ns")),
+)
+ggsave("./figures/alpha_diversity3_swab.png", device="png", height = 10, width = 12)
+ggsave("./figures/alpha_diversity3_swab.svg", device="svg", height = 10, width = 12)
+# send both png and svg files to Laura
+```
+```{r, echo=FALSE, warning=FALSE, fig.cap="Alpha diversity", out.width = '100%', fig.align= "center"}
+knitr::include_graphics("./figures/alpha_diversity3_swab.png")
+```
+
+
+\pagebreak
+
+# Beta diversity
+
+Do multivariate analysis based on unifrac distance and PCoA ordination.
+
+```{r, echo=FALSE, warning=FALSE}
+#obtained beta diversity from distance matrices (DM) and PCoA plots (unifrac)
+#https://forum.qiime2.org/t/tutorial-integrating-qiime2-and-r-for-data-visualization-and-analysis-using-qiime2r/4121?u=nicholas_bokulich
+#https://www.rdocumentation.org/packages/qiimer/versions/0.9.4
+#http://www.science.smith.edu/cmbs/wp-content/uploads/sites/36/2015/09/Tutorial-from-sample-to-analyzed-data-using-Qiime-for-analysis.pdf
+
+#https://bioconductor.statistik.tu-dortmund.de/packages/3.8/bioc/manuals/phyloseq/man/phyloseq.pdf
+
+
+# ------ New TRY (GOTO HERE) ------
+#http://evomics.org/wp-content/uploads/2016/01/phyloseq-Lab-01-Answers.html#beta-diversity-distances
+
+mp <- readRDS("./ps.ng.tax.rds")
+mpra <- microbiome::transform(mp, "compositional")
+
+# # Define taxa to keep.
+# keepTaxa = prevdt[(Prevalence >= 10 & TotalCounts > 3), TaxaID]
+# # Define new object with relative abundance
+# mpra = transform_sample_counts(mp, function(x) x / sum(x))
+# # Filter this new object
+# mpraf = prune_taxa(keepTaxa, mpra)
+# # Calculate distances
+# #     distance(esophagus, "uunifrac") # Unweighted UniFrac
+# #     distance(esophagus, "wunifrac") # weighted UniFrac
+# DistUF = distance(mpra, method = "wunifrac")
+
+
+# <--------------- IMPORT DIRECTLY FROM QIIME DISTANCE MATRIX
+#TODO: !!!!!!!!!!!!!!!!!!!!!!!!!! HOW to construct a phyloseq::distance object?
+#https://joey711.github.io/phyloseq/distance.html
+
+#disttb = as.matrix(DistUF) 
+#disttb[1:10,1:10]
+#DistUF2 <- as.dist(disttb)
+#https://stackoverflow.com/questions/17875733/how-to-convert-a-symmetric-matrix-into-dist-object
+#https://stackoverflow.com/questions/25845220/how-to-read-a-matrix-from-text-file-in-r
+d<-read.table("./bdiv_even4769/weighted_unifrac_dm.txt",header=TRUE,sep="\t", row.names=1)
+DistUF2<-as.dist(d)
+
+ordUF = ordinate(mpra, method = "PCoA", distance = DistUF2)
+plot_scree(ordUF, "Scree Plot: Weighted UniFrac Multidimensional Scaling")
+#plot_ordination(mpraf, ordUF, color = "SampleType") + geom_point(mapping = aes(size = DaysSinceExperimentStart, shape = factor(Subject))) + ggtitle("PCoA: Unweigthed Unifrac")
+unwt.unifrac <- plot_ordination(mpra, ordUF, color="Patient") 
+unwt.unifrac <- unwt.unifrac + ggtitle("Weighted UniFrac") + geom_point(size = 2)
+unwt.unifrac <- unwt.unifrac + theme_classic() + scale_color_brewer("Patient", palette = "Set3")
+#print(unwt.unifrac)
+ggsave("./figures/beta_diversity1.png", device="png", height = 6, width = 12) 
+```
+```{r, echo=FALSE, warning=FALSE, fig.cap="Beta diversity", out.width = '100%', fig.align= "center"}
+knitr::include_graphics("./figures/beta_diversity1.png")
+```
+
+```{r, echo=FALSE, warning=FALSE}
+unwt.unifrac <- plot_ordination(mpra, ordUF, color="SampleType") 
+unwt.unifrac <- unwt.unifrac + ggtitle("Weighted UniFrac") + geom_point(size = 2)
+unwt.unifrac <- unwt.unifrac + theme_classic() + scale_color_brewer("Type", palette = "Dark2")
+#print(unwt.unifrac)
+ggsave("./figures/beta_diversity2.png", device="png", height = 6, width = 12) 
+```
+```{r, echo=FALSE, warning=FALSE, fig.cap="Beta diversity", out.width = '100%', fig.align= "center"}
+knitr::include_graphics("./figures/beta_diversity2.png")
+```
+
+```{r, echo=FALSE, warning=FALSE}
+unwt.unifrac <- plot_ordination(mpra, ordUF, color="RoundDay2") 
+unwt.unifrac <- unwt.unifrac + ggtitle("Weighted UniFrac") + geom_point(size = 2)
+unwt.unifrac <- unwt.unifrac + theme_classic() + scale_color_brewer("Day", palette = "Paired")
+#print(unwt.unifrac)
+ggsave("./figures/beta_diversity3.png", device="png", height = 6, width = 12) 
+```
+```{r, echo=FALSE, warning=FALSE, fig.cap="Beta diversity", out.width = '100%', fig.align= "center"}
+knitr::include_graphics("./figures/beta_diversity3.png")
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+d<-read.table("./bdiv_even4769/unweighted_unifrac_dm.txt",header=TRUE,sep="\t", row.names=1)
+DistUF2<-as.dist(d)
+
+ordUF = ordinate(mpra, method = "PCoA", distance = DistUF2)
+plot_scree(ordUF, "Scree Plot: Unweighted UniFrac Multidimensional Scaling")
+#plot_ordination(mpraf, ordUF, color = "SampleType") + geom_point(mapping = aes(size = DaysSinceExperimentStart, shape = factor(Subject))) + ggtitle("PCoA: Unweigthed Unifrac")
+unwt.unifrac <- plot_ordination(mpra, ordUF, color="Patient") 
+unwt.unifrac <- unwt.unifrac + ggtitle("Unweighted UniFrac") + geom_point(size = 2)
+unwt.unifrac <- unwt.unifrac + theme_classic() + scale_color_brewer("Patient", palette = "Dark2")
+#print(unwt.unifrac)
+ggsave("./figures/beta_diversity4.png", device="png", height = 6, width = 12) 
+```
+```{r, echo=FALSE, warning=FALSE, fig.cap="Beta diversity", out.width = '100%', fig.align= "center"}
+knitr::include_graphics("./figures/beta_diversity4.png")
+```
+
+```{r, echo=FALSE, warning=FALSE}
+unwt.unifrac <- plot_ordination(mpra, ordUF, color="SampleType") 
+unwt.unifrac <- unwt.unifrac + ggtitle("Unweighted UniFrac") + geom_point(size = 2)
+unwt.unifrac <- unwt.unifrac + theme_classic() + scale_color_brewer("Type", palette = "Dark2")
+#print(unwt.unifrac)
+ggsave("./figures/beta_diversity5.png", device="png", height = 6, width = 12) 
+```
+```{r, echo=FALSE, warning=FALSE, fig.cap="Beta diversity", out.width = '100%', fig.align= "center"}
+knitr::include_graphics("./figures/beta_diversity5.png")
+```
+
+```{r, echo=FALSE, warning=FALSE}
+unwt.unifrac <- plot_ordination(mpra, ordUF, color="RoundDay2") 
+unwt.unifrac <- unwt.unifrac + ggtitle("Unweighted UniFrac") + geom_point(size = 2)
+unwt.unifrac <- unwt.unifrac + theme_classic() + scale_color_brewer("Day", palette = "Paired")
+#print(unwt.unifrac)
+ggsave("./figures/beta_diversity6.png", device="png", height = 6, width = 12) 
+```
+```{r, echo=FALSE, warning=FALSE, fig.cap="Beta diversity", out.width = '100%', fig.align= "center"}
+knitr::include_graphics("./figures/beta_diversity6.png")
+```
+
+
+
+
+```{r, echo=FALSE, warning=FALSE}
+#library("DESeq2")
+#ps.ng.tax_sel <- ps.ng.tax
+#otu_table(ps.ng.tax_sel) <- otu_table(ps.ng.tax)[,c("p1.stool.d31","p1.swab.d28")]
+#diagdds = phyloseq_to_deseq2(ps.ng.tax_sel, ~SampleType)
+#diagdds$SampleType <- relevel(diagdds$SampleType, "stool")
+#diagdds = DESeq(diagdds, test="Wald", fitType="parametric")
+#resultsNames(diagdds)
+#
+#res = results(diagdds, cooksCutoff = FALSE)
+#alpha = 0.01
+#sigtab = res[which(res$padj < alpha), ]
+#sigtab = cbind(as(sigtab, "data.frame"), as(tax_table(ps.ng.tax_sel)[rownames(sigtab), ], "matrix"))
+#kable(sigtab) %>%
+#  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+#
+#library("ggplot2")
+#theme_set(theme_bw())
+#scale_fill_discrete <- function(palname = "Set1", ...) {
+#    scale_fill_brewer(palette = palname, ...)
+#}
+#x = tapply(sigtab$log2FoldChange, sigtab$Phylum, function(x) max(x))
+#x = sort(x)
+#sigtab$Phylum = factor(as.character(sigtab$Phylum), levels=names(x))
+#x = tapply(sigtab$log2FoldChange, sigtab$Genus, function(x) max(x))
+#x = sort(x)
+#sigtab$Genus = factor(as.character(sigtab$Genus), levels=names(x))
+#ggplot(sigtab, aes(x=log2FoldChange, y=Genus, color=Phylum)) + geom_point(aes(size=padj)) + 
+#  theme(axis.text.x = element_text(angle = -25, hjust = 0, vjust=0.5))
+#  
+##Error in checkForExperimentalReplicates(object, modelMatrix) : 
+##  The design matrix has the same number of samples and coefficients to fit,
+##  so estimation of dispersion is not possible. Treating samples
+##  as replicates was deprecated in v1.20 and no longer supported since v1.22.
+```
+
+
