@@ -32,6 +32,10 @@ R -e "rmarkdown::render('Phyloseq.Rmd',output_file='Phyloseq.html')"
 install.packages("rmarkdown")
 install.packages("rmdformats")
 install.packages("kableExtra")
+library(readxl)
+library(dplyr)
+library(kableExtra)
+library(knitr)
 library(rmarkdown)
 setwd("~/DATA/Data_Laura_16S_2/core_diversity_e4769")
 #"/home/jhuang/DATA/Data_Fran_16S_Exp27/core_diversity_e44117_Exp27"
