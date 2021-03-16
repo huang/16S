@@ -1,0 +1,56 @@
+
+
+cd raw_data
+for file in *.fastq.gz; do mv $file $(echo $file | cut -d'_' -f2)_$(echo $file | cut -d'_' -f4).fastq.gz; done
+cd ..
+
+
+add_qiime_labels.py -i pandaseq.out -m map_corrected.txt -c FileInput -o combined_fasta
+cd combined_fasta
+pyfasta split -n 20 combined_seqs.fna
+for i in {00..19}; do echo "identify_chimeric_seqs.py -i combined_fasta/combined_seqs.fna.${i} -m usearch61 -o usearch_checked_combined.${i}/ -r ~/REFs/gg_97_otus_4feb2011_fw_rc.fasta --threads=14;" >> uchime_commands.sh; done
+
+./uchime_commands.sh
+
+
+cat usearch_checked_combined.00/chimeras.txt usearch_checked_combined.01/chimeras.txt usearch_checked_combined.02/chimeras.txt usearch_checked_combined.03/chimeras.txt usearch_checked_combined.04/chimeras.txt usearch_checked_combined.05/chimeras.txt usearch_checked_combined.06/chimeras.txt usearch_checked_combined.07/chimeras.txt usearch_checked_combined.08/chimeras.txt usearch_checked_combined.09/chimeras.txt usearch_checked_combined.10/chimeras.txt usearch_checked_combined.11/chimeras.txt usearch_checked_combined.12/chimeras.txt usearch_checked_combined.13/chimeras.txt usearch_checked_combined.14/chimeras.txt usearch_checked_combined.15/chimeras.txt usearch_checked_combined.16/chimeras.txt usearch_checked_combined.17/chimeras.txt usearch_checked_combined.18/chimeras.txt usearch_checked_combined.19/chimeras.txt > chimeras.txt
+
+core_diversity_analyses.py -o./core_diversity_e10967 -i./clustering/otu_table_mc2_w_tax_no_pynast_failures.biom -m./map_corrected.txt -t./clustering/rep_set.tre -e10967 -p./clustering_params.txt
+core_diversity_analyses.py -o./core_diversity_e5000 -i./clustering/otu_table_mc2_w_tax_no_pynast_failures.biom -m./map_corrected.txt -t./clustering/rep_set.tre -e5000 -p./clustering_params.txt
+
+
+
+cat map_corrected.txt | grep -v "S63_merged.fasta" | grep -v "S62_merged.fasta" | grep -v "S61_merged.fasta" | grep -v "S40_merged.fasta" | grep -v "S52_merged.fasta" | grep -v "S46_merged.fasta" | grep -v "S53_merged.fasta" | grep -v "S58_merged.fasta" | grep -v "S57_merged.fasta" | grep -v "S28_merged.fasta" | grep -v "S56_merged.fasta" | grep -v "S37_merged.fasta" | grep -v "S34_merged.fasta" | grep -v "S29_merged.fasta" | grep -v "S32_merged.fasta" | grep -v "S78_merged.fasta" > map_corrected_e7720.txt
+
+
+#12. run Phyloseq.Rmd to get Phyloseq.html
+#https://github.com/vaulot/R_tutorials/tree/master/phyloseq
+cp ~/DATA/Data_Laura_16S/core_diversity_e5347/Phyloseq.Rmd ./
+
+R -e "rmarkdown::render('Phyloseq.Rmd',output_file='Phyloseq.html')"
+#http://girke.bioinformatics.ucr.edu/CSHL_RNAseq/mydoc/mydoc_Rbasics_13/
+install.packages("rmarkdown")
+install.packages("rmdformats")
+install.packages("kableExtra")
+library(rmarkdown)
+setwd("~/DATA/Data_Laura_16S_2/core_diversity_e4769")
+#"/home/jhuang/DATA/Data_Fran_16S_Exp27/core_diversity_e44117_Exp27"
+rmarkdown::render('Phyloseq.Rmd',output_file='Phyloseq.html')
+
+
+#-Outline
+#-Data import
+#-Normalization and Filtering
+#-Relative Abundance on Phylum and Class level
+
+#-Alpha Diversity
+#-Beta Diversity
+#-Differential abundance analysis by diet
+#-Differential abundance analysis by flora
+
+#https://mikheyevlab.github.io/drosophila-microbiome-selection/
+#https://github.com/vaulot/R_tutorials/blob/master/phyloseq/Phyloseq_tutorial.Rmd
+
+
+
+
