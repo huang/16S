@@ -2,7 +2,7 @@
 
 
 
-#1. Run FastQC to allow manual inspection of the quality of sequences
+##1. Run FastQC to allow manual inspection of the quality of sequences
 mkdir fastqc_out
 fastqc -t 4 raw_data/* -o fastqc_out/
 
