@@ -1,3 +1,23 @@
+raw_data/
+fastqc_out/
+trimmed_unpaired/
+trim_data/
+pandaseq.out/
+uchime_commands.sh
+chimeras.txt
+uchime_commands_swab.sh
+chimeras_swab.txt
+uchime_commands_stool.sh
+chimeras_stool.txt
+combined_fasta/
+combined_fasta_swab/
+combined_fasta_stool/
+clustering_params.txt
+clustering*/
+core_diversity*/
+
+
+
 # Prerequisites
 *.d
 
