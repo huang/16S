@@ -3,12 +3,8 @@ fastqc_out/
 trimmed_unpaired/
 trim_data/
 pandaseq.out/
-uchime_commands.sh
-chimeras.txt
-uchime_commands_swab.sh
-chimeras_swab.txt
-uchime_commands_stool.sh
-chimeras_stool.txt
+uchime_commands*.sh
+chimeras*.txt
 combined_fasta*/
 clustering_params.txt
 clustering*/
