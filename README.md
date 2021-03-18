@@ -22,7 +22,7 @@ paste -d" " stool_f1.txt stool_f5.txt > stool_f1_f5.sh
 
 
 
-#3.1. trim paired-end reads
+## 3.1. trim paired-end reads
 mkdir trim_data trimmed_unpaired
 cd raw_data
 
@@ -35,8 +35,7 @@ for file in 19-neg_R1.fastq.gz 1-9135vag_R1.fastq.gz 6-9136vag_R1.fastq.gz 9-914
 #for file in p8_stool_d00_R1.fastq.gz p8_stool_d00r_R1.fastq.gz  p8_stool_d20_R1.fastq.gz p8_stool_d20r_R1.fastq.gz; do java -jar /home/jhuang/Tools/Trimmomatic-0.36/trimmomatic-0.36.jar PE -threads 16 $file ${file/_R1/_R2} ../trim_data/$file ../trimmed_unpaired/$file ../trim_data/${file/_R1/_R2} ../trimmed_unpaired/${file/_R1/_R2} ILLUMINACLIP:/home/jhuang/Tools/Trimmomatic-0.36/adapters/TruSeq3-PE-2.fa:2:30:10:8:TRUE LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36 AVGQUAL:20; done 2> trimmomatic_pe.log
 
 
-# NOTE that step 4 (pandaseq) is better than 3.2, since it removes the primers instead of matching the primers.
---> spring into step 4
+## NOTE that step 4 (pandaseq) is better than 3.2, since it removes the primers instead of matching the primers. --> spring into step 4
 
 
 #3.2 
@@ -60,7 +59,7 @@ done
 
 #WARNING: tolerant version
 #for dir in 56-488ST 57-514ST; do \
-#  mothur "#screen.seqs(fasta=./$dir/stability.trim.contigs.fasta, group=./$dir/stability.contigs.groups, maxambig=6, minlength=200, maxlength=502, maxhomop=10);"; \
+#mothur "#screen.seqs(fasta=./$dir/stability.trim.contigs.fasta, group=./$dir/stability.contigs.groups, maxambig=6, minlength=200, maxlength=502, maxhomop=10);"; \
 #done
 
 
@@ -98,7 +97,7 @@ CCTACGGGGGGCTGCCAAGGCGGCCTGGTTCTGTCAGATTGTCACCGCTTGCCGTGAGACTTGTGACCCTTACCCCGTCA
                                                                     
      180088      --> 90044
 #-p CCTAC GGGNG GCWGC AG -q GACTA CHVGG GTATC TAATC C 
-#4. stitch the reads together; and filter the reads by quality, length, and primer (see len-dis-gg_v3v4.pdf, cutoff length could be 350, 360 or 380)
+## 4. stitch the reads together; and filter the reads by quality, length, and primer (see len-dis-gg_v3v4.pdf, cutoff length could be 350, 360 or 380)
 mkdir pandaseq.out
 #-p primer       Forward primer sequence or number of bases to be removed.
 #-q primer       Reverse primer sequence or number of bases to be removed.
@@ -114,7 +113,7 @@ mkdir pandaseq.out
 #for file in trim_data/*_R1.fastq.gz; do pandaseq -f ${file} -r ${file/_R1.fastq.gz/_R2.fastq.gz} -l 300 -p CCTACGGGNGGCWGCAG -q GACTACHVGGGTATCTAATCC  -w pandaseq.out/$(echo $file | cut -d'/' -f2 | cut -d'_' -f1)_merged.fasta >> LOG_pandaseq; done
 for file in trim_data/p*_R1.fastq.gz; do pandaseq -f ${file} -r ${file/_R1.fastq.gz/_R2.fastq.gz} -l 300 -p CCTACGGGNGGCWGCAG -q GACTACHVGGGTATCTAATCC  -w pandaseq.out/$(echo $file | cut -d'/' -f2 | cut -d'_' -f1-3)_merged.fasta >> LOG_pandaseq; done
 
-#5. Create two QIIME mapping files
+## 5. Create two QIIME mapping files
 validate_mapping_file.py -m map.txt
 
 
@@ -122,13 +121,13 @@ validate_mapping_file.py -m map.txt
 #seqtk seq -A ${sample}.fastq | seqkit seq -w 60 - > ${sample}.fasta
 #done
 #cp processed_controls/*.fasta pandaseq.out/
-#6. Combine files into a labeled file
+## 6. Combine files into a labeled file
 add_qiime_labels.py -i pandaseq.out -m map_corrected.txt -c FileInput -o combined_fasta
 add_qiime_labels.py -i pandaseq.out -m map_corrected_swab.txt -c FileInput -o combined_fasta_swab
 add_qiime_labels.py -i pandaseq.out -m map_corrected_stool.txt -c FileInput -o combined_fasta_stool
 
 
-#7. Remove chimeric sequences using usearch
+## 7. Remove chimeric sequences using usearch
 cd combined_fasta
 pyfasta split -n 100 combined_seqs.fna
 for i in {000..099}; do echo "identify_chimeric_seqs.py -i combined_fasta/combined_seqs.fna.${i} -m usearch61 -o usearch_checked_combined.${i}/ -r ~/REFs/gg_97_otus_4feb2011_fw_rc.fasta --threads=14;" >> uchime_commands.sh; done
@@ -171,7 +170,7 @@ rm -rf usearch_checked_combined_*.0*
 
 
 
-#8. Create OTU picking parameter file, and run the entire QIIME open reference picking pipeline with usearch61 for reference picking and usearch61_ref for de novo OTU picking
+## 8. Create OTU picking parameter file, and run the entire QIIME open reference picking pipeline with usearch61 for reference picking and usearch61_ref for de novo OTU picking
 echo "pick_otus:similarity 0.97" > clustering_params.txt
 echo "assign_taxonomy:similarity 0.97" >> clustering_params.txt
 echo "parallel_align_seqs_pynast:template_fp /home/jhuang/REFs/SILVA_132_QIIME_release/core_alignment/80_core_alignment.fna" >> clustering_params.txt
@@ -195,14 +194,14 @@ mv clustering34 clustering34_ctrl
 mv plots plots_ctrl
 
 
-#9.2 for other data: core diversity analyses
+## 9.2 for other data: core diversity analyses
 core_diversity_analyses.py -o./core_diversity_e4753 -i./clustering/otu_table_mc2_w_tax_no_pynast_failures.biom -m./map_corrected.txt -t./clustering/rep_set.tre -e4753 -p./clustering_params.txt
 core_diversity_analyses.py -o./core_diversity_e4753_swab -i./clustering_swab/otu_table_mc2_w_tax_no_pynast_failures.biom -m./map_corrected_swab.txt -t./clustering_swab/rep_set.tre -e4753 -p./clustering_params.txt
 core_diversity_analyses.py -o./core_diversity_e4753_stool -i./clustering_stool/otu_table_mc2_w_tax_no_pynast_failures.biom -m./map_corrected_stool.txt -t./clustering_stool/rep_set.tre -e4753 -p./clustering_params.txt
-# --> STEP 12 if using Phyloseq.Rmd
+## --> STEP 12 if using Phyloseq.Rmd
 
 
-##10. supplements of core diversity analyses
+## 10. supplements of core diversity analyses
 -----------------------
 ---- by SampleType ----
 gunzip ./core_diversity_e6899_g6/table_mc6899.biom.gz
@@ -215,7 +214,7 @@ summarize_taxa.py -i./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_o
 
 plot_taxa_summary.py -i./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_otu_table_sorted_L2.txt,./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_otu_table_sorted_L3.txt,./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_otu_table_sorted_L4.txt,./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_otu_table_sorted_L5.txt,./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_otu_table_sorted_L6.txt -o./core_diversity_e6899_g6/taxa_plots_SampleType/taxa_summary_plots/
 
-# alpha diversity ##
+##alpha diversity##
 compare_alpha_diversity.py -i./core_diversity_e6899_g6/arare_max6899/alpha_div_collated/PD_whole_tree.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/arare_max6899_SampleType/compare_PD_whole_tree -n 9999
 compare_alpha_diversity.py -i./core_diversity_e6899_g6/arare_max6899/alpha_div_collated/chao1.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/arare_max6899_SampleType/compare_chao1 -n 9999
 compare_alpha_diversity.py -i./core_diversity_e6899_g6/arare_max6899/alpha_div_collated/observed_otus.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/arare_max6899_SampleType/compare_observed_otus -n 9999
@@ -225,7 +224,7 @@ compare_alpha_diversity.py -i./core_diversity_e6899_g6/arare_max6899/alpha_div_c
 compare_alpha_diversity.py -i./core_diversity_e6899_g6/arare_max6899/alpha_div_collated/observed_otus.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/arare_max6899_SampleType/compare_observed_otus_tt -t parametric
 compare_alpha_diversity.py -i./core_diversity_e6899_g6/arare_max6899/alpha_div_collated/shannon.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/arare_max6899_SampleType/compare_shannon_tt -t parametric
 
-# beta diversity statistics ##
+##beta diversity statistics##
 make_distance_boxplots.py -d./core_diversity_e6899_g6/bdiv_even6899/weighted_unifrac_dm.txt -f"SampleType" -o./core_diversity_e6899_g6/bdiv_even6899_SampleType/weighted_unifrac_boxplots/ -m ./map_corrected.txt --save_raw_data -n 999
 make_distance_boxplots.py -d./core_diversity_e6899_g6/bdiv_even6899/unweighted_unifrac_dm.txt -f"SampleType" -o./core_diversity_e6899_g6/bdiv_even6899_SampleType/unweighted_unifrac_boxplots/ -m ./map_corrected.txt --save_raw_data -n 999
 #make_distance_boxplots.py -d./core_diversity_e6899_g6/bdiv_even6899/unweighted_unifrac_dm.txt -f"SampleType" -o./core_diversity_e6899_g6/bdiv_even6899_SampleType/unweighted_unifrac_boxplots/ -m ./map_corrected.txt -g png
@@ -233,7 +232,7 @@ compare_categories.py --method adonis -i./core_diversity_e6899_g6/bdiv_even6899/
 compare_categories.py --method anosim -i./core_diversity_e6899_g6/bdiv_even6899/unweighted_unifrac_dm.txt -m./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/bdiv_even6899_SampleType/unweighted_anosim_out -n 999
 compare_categories.py --method anosim -i./core_diversity_e6899_g6/bdiv_even6899/weighted_unifrac_dm.txt -m./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/bdiv_even6899_SampleType/weighted_anosim_out -n 999
 
-# using even.biom file to generate group significance ##
+##using even.biom file to generate group significance##
 gunzip ./core_diversity_e6899_g6/table_even6899.biom.gz
 group_significance.py -i./core_diversity_e6899_g6/table_even6899.biom -m./map_corrected.txt -c "SampleType" -s kruskal_wallis -o./core_diversity_e6899_g6/group_significance_SampleType_kw_ocs.txt --biom_samples_are_superset --print_non_overlap
 group_significance.py -i./core_diversity_e6899_g6/table_even6899.biom -m./map_corrected.txt -c "SampleType" -s g_test -o./core_diversity_e6899_g6/group_significance_SampleType_gtest_ocs.txt
@@ -241,11 +240,11 @@ gzip ./core_diversity_e6899_g6/table_even6899.biom
 
 
 
-##11. mv index.html .index.html
+## 11. mv index.html .index.html
 cp /media/jhuang/Elements/Data_16S_arckNov_re/core_diversity_e10967/index.html ./
 
 
-##12. run Phyloseq.Rmd to get Phyloseq.html (under qiime1-env)
+## 12. run Phyloseq.Rmd to get Phyloseq.html (under qiime1-env)
 #https://github.com/vaulot/R_tutorials/tree/master/phyloseq
 cp ~/DATA/Data_Laura_16S/core_diversity_e5347/Phyloseq.Rmd ./
 
