@@ -247,7 +247,8 @@ cp /media/jhuang/Elements/Data_16S_arckNov_re/core_diversity_e10967/index.html .
 
 ## 12. run Phyloseq.Rmd to get Phyloseq.html (under qiime1-env)
 #https://github.com/vaulot/R_tutorials/tree/master/phyloseq
-cp ~/DATA/Data_Laura_16S/core_diversity_e5347/Phyloseq.Rmd ./
+cp Phyloseq.Rmd core_diversity_e4753
+#fitting Phyloseq.Rmd to current data by change points FITTING[1-5] 
 
 R -e "rmarkdown::render('Phyloseq.Rmd',output_file='Phyloseq.html')"
 #http://girke.bioinformatics.ucr.edu/CSHL_RNAseq/mydoc/mydoc_Rbasics_13/
