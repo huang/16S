@@ -9,9 +9,7 @@ uchime_commands_swab.sh
 chimeras_swab.txt
 uchime_commands_stool.sh
 chimeras_stool.txt
-combined_fasta/
-combined_fasta_swab/
-combined_fasta_stool/
+combined_fasta*/
 clustering_params.txt
 clustering*/
 core_diversity*/
