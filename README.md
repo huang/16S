@@ -297,7 +297,9 @@ library(rmarkdown)
 #FITTING6: delete H47(1) in lev
 #FITTING6: can also use self-defined comparisons excluding the group containing only one elements instead of using comparisons = L.pairs,
 #comparisons = list(c("-","00"),c("-","07"),c("-","14"),c("-","21"),c("-","28"),  c("00","07"),c("00","14"),c("00","21"),c("00","28"),  c("07","14"),c("07","21"),c("07","28"), c("14","21"),c("14","28"),   c("21","28")), 
-
+#FITTING7: regulate the bar height if it has replicates
+#otu_table(ps.ng.tax_most_swab_)[,c("41")] <- otu_table(ps.ng.tax_most_swab_)[,c("41")]/2
+#otu_table(ps.ng.tax_most_swab_)[,c("42")] <- otu_table(ps.ng.tax_most_swab_)[,c("42")]/2
 
 setwd("~/DATA/Data_Laura_16S_2/core_diversity_e4769")
 #"/home/jhuang/DATA/Data_Fran_16S_Exp27/core_diversity_e44117_Exp27"
