@@ -27,6 +27,7 @@ cd raw_data
 ```
 
 for file in 3-9141vag_R1.fastq.gz 16-9148stuhl_R1.fastq.gz 4-9140vag_R1.fastq.gz 15-9136stuhl_R1.fastq.gz 2-9133vag_R1.fastq.gz 11-9133stuhl_R1.fastq.gz 7-9148vag_R1.fastq.gz 10-9135stuhl_R1.fastq.gz 12-9141stuhl_R1.fastq.gz 5-9161vag_R1.fastq.gz ; do java -jar /home/jhuang/Tools/Trimmomatic-0.36/trimmomatic-0.36.jar PE -threads 16 $file ${file/_R1/_R2} ../trim_data/$file ../trimmed_unpaired/$file ../trim_data/${file/_R1/_R2} ../trimmed_unpaired/${file/_R1/_R2} ILLUMINACLIP:/home/jhuang/Tools/Trimmomatic-0.36/adapters/TruSeq3-PE-2.fa:2:30:10:8:TRUE LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36 AVGQUAL:20; done 2> trimmomatic_pe.log
+
 for file in 19-neg_R1.fastq.gz 1-9135vag_R1.fastq.gz 6-9136vag_R1.fastq.gz 9-9143vag_R1.fastq.gz 8-9147vag_R1.fastq.gz 18-9143stuhl_R1.fastq.gz 14-9161stuhl_R1.fastq.gz 17-9147stuhl_R1.fastq.gz 13-9140stuhl_R1.fastq.gz; do java -jar /home/jhuang/Tools/Trimmomatic-0.36/trimmomatic-0.36.jar PE -threads 16 $file ${file/_R1/_R2} ../trim_data/$file ../trimmed_unpaired/$file ../trim_data/${file/_R1/_R2} ../trimmed_unpaired/${file/_R1/_R2} ILLUMINACLIP:/home/jhuang/Tools/Trimmomatic-0.36/adapters/TruSeq3-PE-2.fa:2:30:10:8:TRUE LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36 AVGQUAL:20; done 2> trimmomatic_pe2.log
 
 ```sh
