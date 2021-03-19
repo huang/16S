@@ -276,7 +276,7 @@ library(ggplot2)
   
 
   library(stringr)
-#FITTING1: ps.ng.tax_most_ get the total number of taxa!
+#!!!!FITTING1!!!! ps.ng.tax_most_ get the total number of taxa!
 #in total [ 89 taxa and 55 samples ]
 #for id in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85; do   
 #for id in 86 87 88 89 90 91 92 93 94; do
@@ -732,7 +732,16 @@ tax_table(ps.ng.tax_most_)[89,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[8
 tax_table(ps.ng.tax_most_)[89,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[89,"Order"], "__")[[1]][2]
 tax_table(ps.ng.tax_most_)[89,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[89,"Family"], "__")[[1]][2]
 tax_table(ps.ng.tax_most_)[89,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[89,"Genus"], "__")[[1]][2]
-
+tax_table(ps.ng.tax_most_)[90,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[90,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[90,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[90,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[90,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[90,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[90,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[90,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[90,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[90,"Genus"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[91,"Phylum"] <- str_split(tax_table(ps.ng.tax_most_)[91,"Phylum"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[91,"Class"] <- str_split(tax_table(ps.ng.tax_most_)[91,"Class"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[91,"Order"] <- str_split(tax_table(ps.ng.tax_most_)[91,"Order"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[91,"Family"] <- str_split(tax_table(ps.ng.tax_most_)[91,"Family"], "__")[[1]][2]
+tax_table(ps.ng.tax_most_)[91,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[91,"Genus"], "__")[[1]][2]
 
 
   #aes(color="Phylum", fill="Phylum") --> aes()
@@ -788,6 +797,7 @@ Use color according to phylum. Do separate panels Patient and RoundDay for stool
 
   #-- If existing replicates, to be processed as follows --
   #-- There are no replicates in the second batch of 16S data for Laura, commented them --
+  
   #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00")]/2
   #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00r")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d00r")]/2 
   #otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20")] <- otu_table(ps.ng.tax_most_stool_)[,c("p8.stool.d20")]/2
@@ -829,6 +839,15 @@ Use color according to phylum. Do separate panels Patient and RoundDay for swab.
   #otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d34")] <- otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d34")]/3
   #otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d41")] <- otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d41")]/3 
   #otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d48")] <- otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d48")]/3
+#        chao1   observed_otus   shannon PD_whole_tree
+#41      435.466666667   252.0   3.50672545917   6.66232
+#42      313.882352941   128.0   1.53052524164   7.6436
+#43      702.078947368   306.0   4.62144989241   8.50455
+#44      479.078947368   255.0   3.5702384665    5.94088
+#45      574.519230769   295.0   4.17108750335   6.65532
+  otu_table(ps.ng.tax_most_swab_)[,c("41")] <- otu_table(ps.ng.tax_most_swab_)[,c("41")]/2
+  otu_table(ps.ng.tax_most_swab_)[,c("42")] <- otu_table(ps.ng.tax_most_swab_)[,c("42")]/2
+  
   #plot_bar(ps.ng.tax_most_swab_, x="Phylum", fill = "Phylum", facet_grid = Patient~RoundDay) + geom_bar(aes(color=Phylum, fill=Phylum), stat="identity", position="stack") + theme(axis.text = element_text(size = theme.size, colour="black"))
   plot_bar(ps.ng.tax_most_swab_, x="Phylum", fill="Phylum", facet_grid = Patient~RoundDay) + geom_bar(aes(), stat="identity", position="stack") +
   scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = 6, colour="black"), axis.text.x=element_blank(), axis.ticks=element_blank()) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=2))
@@ -1076,6 +1095,13 @@ div.df <- merge(hmp.div_qiime, hmp.meta, by = "sam_name")
 div.df2 <- div.df[, c("Patient", "chao1", "shannon", "observed_otus", "PD_whole_tree")]
 colnames(div.df2) <- c("Patient", "Chao-1", "Shannon", "OTU", "Phylogenetic Diversity")
 #colnames(div.df2)
+options(max.print=999999)
+#27     H47 830.5000 5.008482 319               10.60177
+#FITTING6: if occuring "Computation failed in `stat_signif()`:not enough 'y' observations"
+#means: the patient H47 contains only one sample, it should be removed for the statistical p-values calculations. 
+#delete H47(1)
+div.df2 <- div.df2[-c(27), ] 
+#div.df2 <- div.df2[-c(55,54, 45,40,39,27,26,25,1), ] 
 
 div_df_melt <- reshape2::melt(div.df2)
 #head(div_df_melt)
@@ -1097,6 +1123,8 @@ p <- ggboxplot(div_df_melt, x = "Patient", y = "value",
 
 
 lev <- levels(div_df_melt$Patient) # get the variables
+#FITTING6: delete H47(1) in lev
+lev <- lev[-c(3)]
 # make a pairwise list that we want to compare.
 #my_stat_compare_means
 #https://stackoverflow.com/questions/47839988/indicating-significance-with-ggplot2-in-a-boxplot-with-multiple-groups
@@ -1218,10 +1246,10 @@ lev <- levels(div_df_melt$RoundDay)
 L.pairs <- combn(seq_along(lev), 2, simplify = FALSE, FUN = function(i) lev[i])
 p2 <- p + stat_compare_means(
   method="t.test",
-  #comparisons = L.pairs,    # L.pairs
+  comparisons = L.pairs,    # L.pairs
   #CHANGE: 
   #comparisons = list(c("-", "21"), c("-", "28"),  c("00", "07"), c("00", "21"), c("00", "28")), 
-  comparisons = list(c("-", "021"), c("-", "028"),  c("000", "007"), c("000", "021"), c("000", "028")),
+  #comparisons = list(c("-", "021"), c("-", "028"),  c("000", "007"), c("000", "021"), c("000", "028")),
   label = "p.signif",
   symnum.args <- list(cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 1), symbols = c("****", "***", "**", "*", "ns")),
   hide.ns = TRUE
@@ -1255,7 +1283,9 @@ p2 <- p + stat_compare_means(
   #comparisons = L.pairs,    # L.pairs
   #CHANGE: 
   #comparisons = list(c("-", "07"),  c("-", "14"), c("-", "21"),  c("00", "07"),  c("00", "14"), c("00", "21")), 
-  comparisons = list(c("-", "007"),  c("-", "014"), c("-", "021"), c("-", "035"),  c("000", "007"),  c("000", "014"), c("000", "021"), c("000", "035")),
+  #comparisons = list(c("-", "007"),  c("-", "014"), c("-", "021"), c("-", "035"),  c("000", "007"),  c("000", "014"), c("000", "021"), c("000", "035")),
+  #FITTING6: can also use self-defined comparisons excluding the group containing only one elements instead of using comparisons = L.pairs,
+  comparisons = list(c("-","00"),c("-","07"),c("-","14"),c("-","21"),c("-","28"),  c("00","07"),c("00","14"),c("00","21"),c("00","28"),  c("07","14"),c("07","21"),c("07","28"), c("14","21"),c("14","28"),   c("21","28")), 
   label = "p.signif",
   symnum.args <- list(cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 1), symbols = c("****", "***", "**", "*", "ns")),
   hide.ns = TRUE
