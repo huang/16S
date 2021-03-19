@@ -295,6 +295,8 @@ library(rmarkdown)
 #means: the patient H47 contains only one sample, it should be removed for the statistical p-values calculations. 
 #delete H47(1)
 #FITTING6: delete H47(1) in lev
+#FITTING6: can also use self-defined comparisons excluding the group containing only one elements instead of using comparisons = L.pairs,
+#comparisons = list(c("-","00"),c("-","07"),c("-","14"),c("-","21"),c("-","28"),  c("00","07"),c("00","14"),c("00","21"),c("00","28"),  c("07","14"),c("07","21"),c("07","28"), c("14","21"),c("14","28"),   c("21","28")), 
 
 
 setwd("~/DATA/Data_Laura_16S_2/core_diversity_e4769")
