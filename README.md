@@ -272,25 +272,30 @@ library(rmarkdown)
 #alpha_diversity.py -i table_even4753.biom --metrics chao1,observed_otus,shannon,PD_whole_tree -o adiv_even.txt -t ../clustering_swab/rep_set.tre
 #FITTING3: mkdir figures
 #FITTING4: generate alpha diversity data for each patient
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H45_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H45_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H49_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H49_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H51_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H51_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H67_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H67_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H78_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H78_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H79_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H79_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H83_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H83_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H85_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H85_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H45_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H45_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H46_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H46_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H47_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H47_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H49_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H49_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H51_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H51_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H67_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H67_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H78_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H78_.txt 
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H79_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H79_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H83_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H83_.txt
-cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H85_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H85_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H45_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H45_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H49_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H49_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H51_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H51_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H67_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H67_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H78_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H78_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H79_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H79_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H83_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H83_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H85_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H85_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H45_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H45_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H46_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H46_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H47_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H47_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H49_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H49_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H51_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H51_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H67_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H67_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H78_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H78_.txt 
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H79_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H79_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H83_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H83_.txt
+#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H85_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H85_.txt
 #FITTING5: 4769-->4753
+#FITTING6: if occuring "Computation failed in `stat_signif()`:not enough 'y' observations"
+#means: the patient H47 contains only one sample, it should be removed for the statistical p-values calculations. 
+#delete H47(1)
+#FITTING6: delete H47(1) in lev
+
 
 setwd("~/DATA/Data_Laura_16S_2/core_diversity_e4769")
 #"/home/jhuang/DATA/Data_Fran_16S_Exp27/core_diversity_e44117_Exp27"
