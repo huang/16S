@@ -250,9 +250,7 @@ cp /media/jhuang/Elements/Data_16S_arckNov_re/core_diversity_e10967/index.html .
 ```sh
 cp Phyloseq.Rmd core_diversity_e4753
 #fitting Phyloseq.Rmd to current data by change points FITTING[1-5] 
-```
 
-R -e "rmarkdown::render('Phyloseq.Rmd',output_file='Phyloseq.html')"
 #http://girke.bioinformatics.ucr.edu/CSHL_RNAseq/mydoc/mydoc_Rbasics_13/
 install.packages("rmarkdown")
 install.packages("rmdformats")
@@ -262,10 +260,41 @@ library(dplyr)
 library(kableExtra)
 library(knitr)
 library(rmarkdown)
-```sh
+
+#FITTING1: ps.ng.tax_most_
+#FITTING2: CONSOLE: 
+#gunzip table_even4753.biom.gz
+#alpha_diversity.py -i table_even4753.biom --metrics chao1,observed_otus,shannon,PD_whole_tree -o adiv_even.txt -t ../clustering/rep_set.tre
+#gunzip table_even4753.biom.gz
+#alpha_diversity.py -i table_even4753.biom --metrics chao1,observed_otus,shannon,PD_whole_tree -o adiv_even.txt -t ../clustering_stool/rep_set.tre
+#gunzip table_even4753.biom.gz
+#alpha_diversity.py -i table_even4753.biom --metrics chao1,observed_otus,shannon,PD_whole_tree -o adiv_even.txt -t ../clustering_swab/rep_set.tre
+#FITTING3: mkdir figures
+#FITTING4: generate alpha diversity data for each patient
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H45_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H45_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H49_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H49_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H51_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H51_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H67_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H67_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H78_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H78_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H79_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H79_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H83_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H83_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H85_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H85_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H45_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H45_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H46_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H46_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H47_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H47_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H49_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H49_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H51_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H51_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H67_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H67_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H78_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H78_.txt 
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H79_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H79_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H83_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H83_.txt
+cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H85_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H85_.txt
+#FITTING5: 4769-->4753
+
 setwd("~/DATA/Data_Laura_16S_2/core_diversity_e4769")
 #"/home/jhuang/DATA/Data_Fran_16S_Exp27/core_diversity_e44117_Exp27"
 rmarkdown::render('Phyloseq.Rmd',output_file='Phyloseq.html')
+R -e "rmarkdown::render('Phyloseq.Rmd',output_file='Phyloseq.html')"
 ```
 
 #-Outline
