@@ -839,6 +839,7 @@ Use color according to phylum. Do separate panels Patient and RoundDay for swab.
   #otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d34")] <- otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d34")]/3
   #otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d41")] <- otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d41")]/3 
   #otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d48")] <- otu_table(ps.ng.tax_most_swab_)[,c("p5.swab.d48")]/3
+#FITTING7: regulate the bar height if it has replicates
 #        chao1   observed_otus   shannon PD_whole_tree
 #41      435.466666667   252.0   3.50672545917   6.66232
 #42      313.882352941   128.0   1.53052524164   7.6436
@@ -908,6 +909,9 @@ Use color according to class. Do separate panels Patient and RoundDay for stool.
 
 Use color according to class. Do separate panels Patient and RoundDay for swab.
 ```{r, echo=FALSE, warning=FALSE}
+  #FITTING7: regulate the bar height if it has replicates
+  otu_table(ps.ng.tax_most_swab_)[,c("41")] <- otu_table(ps.ng.tax_most_swab_)[,c("41")]/2
+  otu_table(ps.ng.tax_most_swab_)[,c("42")] <- otu_table(ps.ng.tax_most_swab_)[,c("42")]/2
   plot_bar(ps.ng.tax_most_swab_, x="Class", fill="Class", facet_grid = Patient~RoundDay) + geom_bar(aes(), stat="identity", position="stack") +
   scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = 6, colour="black"), axis.text.x=element_blank(), axis.ticks=element_blank()) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=3))
 ```
@@ -957,6 +961,9 @@ Use color according to class. Do separate panels Patient and RoundDay for stool.
 
 Use color according to class. Do separate panels Patient and RoundDay for swab.
 ```{r, echo=FALSE, warning=FALSE}
+  #FITTING7: regulate the bar height if it has replicates
+  otu_table(ps.ng.tax_most_swab_)[,c("41")] <- otu_table(ps.ng.tax_most_swab_)[,c("41")]/2
+  otu_table(ps.ng.tax_most_swab_)[,c("42")] <- otu_table(ps.ng.tax_most_swab_)[,c("42")]/2
   plot_bar(ps.ng.tax_most_swab_, x="Order", fill="Order", facet_grid = Patient~RoundDay) + geom_bar(aes(), stat="identity", position="stack") +
   scale_fill_manual(values = c("darkblue", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "lightskyblue", "darkgreen", "deeppink", "khaki2", "firebrick", "brown1", "darkorange1", "cyan1", "royalblue4", "darksalmon", "darkblue","royalblue4", "dodgerblue3", "steelblue1", "lightskyblue", "darkseagreen", "darkgoldenrod1", "darkseagreen", "darkorchid", "darkolivegreen1", "brown1", "darkorange1", "cyan1", "darkgrey")) + theme(axis.text = element_text(size = 6, colour="black"), axis.text.x=element_blank(), axis.ticks=element_blank()) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=4))
 ```
@@ -1007,6 +1014,9 @@ Use color according to class. Do separate panels Patient and RoundDay for stool.
 
 Use color according to class. Do separate panels Patient and RoundDay for swab.
 ```{r, echo=FALSE, warning=FALSE}
+  #FITTING7: regulate the bar height if it has replicates
+  otu_table(ps.ng.tax_most_swab_)[,c("41")] <- otu_table(ps.ng.tax_most_swab_)[,c("41")]/2
+  otu_table(ps.ng.tax_most_swab_)[,c("42")] <- otu_table(ps.ng.tax_most_swab_)[,c("42")]/2
   plot_bar(ps.ng.tax_most_swab_, x="Family", fill="Family", facet_grid = Patient~RoundDay) + geom_bar(aes(), stat="identity", position="stack") +
   scale_fill_manual(values = c("#FF0000", "#000000", "#0000FF", "#C0C0C0", "#FFFFFF", "#FFFF00", "#00FFFF", "#FFA500", "#00FF00", "#808080", "#FF00FF", "#800080", "#FDD017", "#0000A0", "#3BB9FF", "#008000", "#800000", "#ADD8E6", "#F778A1", "#800517", "#736F6E", "#F52887", "#C11B17", "#5CB3FF", "#A52A2A", "#FF8040", "#2B60DE", "#736AFF", "#1589FF", "#98AFC7", "#8D38C9", "#307D7E", "#F6358A", "#151B54", "#6D7B8D", "#FDEEF4", "#FF0080", "#F88017", "#2554C7", "#FFF8C6", "#D4A017", "#306EFF", "#151B8D", "#9E7BFF", "#EAC117", "#E0FFFF", "#15317E", "#6C2DC7", "#FBB917", "#FCDFFF", "#15317E", "#254117", "#FAAFBE", "#357EC7")) + theme(axis.text = element_text(size = 4, colour="black"), axis.text.x=element_blank(), axis.ticks=element_blank()) + theme(legend.position="bottom") + guides(fill=guide_legend(nrow=8))
 ```
