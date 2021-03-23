@@ -262,34 +262,25 @@ library(kableExtra)
 library(knitr)
 library(rmarkdown)
 
-#FITTING1: give the correct rows of "tax_table(ps.ng.tax_most_)[91,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[91,"Genus"], "__")[[1]][2]" by testing ps.ng.tax_most_
+#FITTING1: give the maximal correct row numbers of "tax_table(ps.ng.tax_most_)..." by typing ps.ng.tax_most_
 #FITTING2: CONSOLE: 
-#gunzip table_even4753.biom.gz
-#alpha_diversity.py -i table_even4753.biom --metrics chao1,observed_otus,shannon,PD_whole_tree -o adiv_even.txt -t ../clustering/rep_set.tre
-#gunzip table_even4753.biom.gz
-#alpha_diversity.py -i table_even4753.biom --metrics chao1,observed_otus,shannon,PD_whole_tree -o adiv_even.txt -t ../clustering_stool/rep_set.tre
-#gunzip table_even4753.biom.gz
-#alpha_diversity.py -i table_even4753.biom --metrics chao1,observed_otus,shannon,PD_whole_tree -o adiv_even.txt -t ../clustering_swab/rep_set.tre
-#FITTING3: mkdir figures
-#FITTING4: generate alpha diversity data for each patient
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H45_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H45_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H49_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H49_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H51_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H51_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H67_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H67_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H78_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H78_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H79_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H79_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H83_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H83_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_swab/adiv_even_H85_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_swab/adiv_even_H85_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H45_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H45_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H46_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H46_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H47_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H47_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H49_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H49_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H51_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H51_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H67_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H67_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H78_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H78_.txt 
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H79_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H79_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H83_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H83_.txt
-#cp ./Data_Laura_16S_2_re/core_diversity_e4753_stool/adiv_even_H85_.txt ./Data_Laura_16S_2_re_/core_diversity_e4753_stool/adiv_even_H85_.txt
+gunzip table_even4753.biom.gz
+alpha_diversity.py -i table_even4753.biom --metrics chao1,observed_otus,shannon,PD_whole_tree -o adiv_even.txt -t ../clustering/rep_set.tre
+gunzip table_even4753.biom.gz
+alpha_diversity.py -i table_even4753.biom --metrics chao1,observed_otus,shannon,PD_whole_tree -o adiv_even.txt -t ../clustering_stool/rep_set.tre
+gunzip table_even4753.biom.gz
+alpha_diversity.py -i table_even4753.biom --metrics chao1,observed_otus,shannon,PD_whole_tree -o adiv_even.txt -t ../clustering_swab/rep_set.tre
+#FITTING3: 
+mkdir figures
+#FITTING4: generate alpha diversity data for each patient unter the *_swab and *_stool directories
+cd core_diversity_e4753_swab
+head -1 adiv_even.txt > adiv_even_head.txt
+for patient in p1 p2 p3 p4 p5 p6 p7 p8 H45 H46 H47 H49 H51 H67 H78 H79 H83 H85; do
+grep "${patient}" adiv_even.txt > adiv_even_${patient}.txt
+cat adiv_even_head.txt adiv_even_${patient}.txt > adiv_even_${patient}_.txt
+done
+#DELETE the empty records, for example H46 and H47
+#rm adiv_even_H46_.txt adiv_even_H46.txt adiv_even_H47_.txt adiv_even_H47.txt
 #FITTING5: 4769-->4753
 #FITTING6: if occuring "Computation failed in `stat_signif()`:not enough 'y' observations"
 #means: the patient H47 contains only one sample, it should be removed for the statistical p-values calculations. 
