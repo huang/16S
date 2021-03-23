@@ -291,6 +291,7 @@ done
 #FITTING7: regulate the bar height if it has replicates
 #otu_table(ps.ng.tax_most_swab_)[,c("41")] <- otu_table(ps.ng.tax_most_swab_)[,c("41")]/2
 #otu_table(ps.ng.tax_most_swab_)[,c("42")] <- otu_table(ps.ng.tax_most_swab_)[,c("42")]/2
+#MEMORIZE that the DIR figures contains all svg- and png-files and should be also sent! 
 
 setwd("~/DATA/Data_Laura_16S_2/core_diversity_e4769")
 #"/home/jhuang/DATA/Data_Fran_16S_Exp27/core_diversity_e44117_Exp27"
