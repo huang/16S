@@ -262,7 +262,7 @@ library(kableExtra)
 library(knitr)
 library(rmarkdown)
 
-#FITTING1: ps.ng.tax_most_
+#FITTING1: give the correct rows of "tax_table(ps.ng.tax_most_)[91,"Genus"] <- str_split(tax_table(ps.ng.tax_most_)[91,"Genus"], "__")[[1]][2]" by testing ps.ng.tax_most_
 #FITTING2: CONSOLE: 
 #gunzip table_even4753.biom.gz
 #alpha_diversity.py -i table_even4753.biom --metrics chao1,observed_otus,shannon,PD_whole_tree -o adiv_even.txt -t ../clustering/rep_set.tre
