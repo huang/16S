@@ -1,5 +1,5 @@
 #SampleID	BarcodeSequence	LinkerPrimerSequence	FileInput	Group	Donor_Recipient	PCR	Description
-1.DonorInputPD1			1.DonorInputPD1_R1.fastq.gz_merged.fasta	Group2.1	Donor	PCR1	165.15  ng/ul
+1.DonorInputPD1			1.DonorInputPD1_R1.fastq.gz_merged.fasta	Group2.1	Donor	PCR1	165.15 ng/ul
 2.124			2.124_R1.fastq.gz_merged.fasta	Group2.1	Recipient	PCR1	373 ng/ul
 3.122			3.122_R1.fastq.gz_merged.fasta	Group2.1	Recipient	PCR1	590 ng/ul
 4.117			4.117_R1.fastq.gz_merged.fasta	Group2.1	Recipient	PCR1	1142 ng/ul
