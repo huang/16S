@@ -1,0 +1,19 @@
+#SampleID	BarcodeSequence	LinkerPrimerSequence	FileInput	Stress	SampleType	Group	Description
+1.9135vag			1-9135vag_R1.fastq.gz_merged.fasta	no_stress	vaginal	group4	no_stress_in_vaginal
+6.9136vag			6-9136vag_R1.fastq.gz_merged.fasta	no_stress	vaginal	group4	no_stress_in_vaginal
+5.9161vag			5-9161vag_R1.fastq.gz_merged.fasta	no_stress	vaginal	group4	no_stress_in_vaginal
+8.9147vag			8-9147vag_R1.fastq.gz_merged.fasta	early_stress	vaginal	group5	early_stress_in_vaginal
+9.9143vag			9-9143vag_R1.fastq.gz_merged.fasta	early_stress	vaginal	group5	early_stress_in_vaginal
+7.9148vag			7-9148vag_R1.fastq.gz_merged.fasta	early_stress	vaginal	group5	early_stress_in_vaginal
+2.9133vag			2-9133vag_R1.fastq.gz_merged.fasta	mid_stress	vaginal	group6	mid_stress_in_vaginal
+3.9141vag			3-9141vag_R1.fastq.gz_merged.fasta	mid_stress	vaginal	group6	mid_stress_in_vaginal
+4.9140vag			4-9140vag_R1.fastq.gz_merged.fasta	mid_stress	vaginal	group6	mid_stress_in_vaginal
+10.9135stuhl			10-9135stuhl_R1.fastq.gz_merged.fasta	no_stress	stool	group1	no_stress_in_stool
+15.9136stuhl			15-9136stuhl_R1.fastq.gz_merged.fasta	no_stress	stool	group1	no_stress_in_stool
+14.9161stuhl			14-9161stuhl_R1.fastq.gz_merged.fasta	no_stress	stool	group1	no_stress_in_stool
+17.9147stuhl			17-9147stuhl_R1.fastq.gz_merged.fasta	early_stress	stool	group2	early_stress_in_stool
+18.9143stuhl			18-9143stuhl_R1.fastq.gz_merged.fasta	early_stress	stool	group2	early_stress_in_stool
+16.9148stuhl			16-9148stuhl_R1.fastq.gz_merged.fasta	early_stress	stool	group2	early_stress_in_stool
+11.9133stuhl			11-9133stuhl_R1.fastq.gz_merged.fasta	mid_stress	stool	group3	mid_stress_in_stool
+12.9141stuhl			12-9141stuhl_R1.fastq.gz_merged.fasta	mid_stress	stool	group3	mid_stress_in_stool
+13.9140stuhl			13-9140stuhl_R1.fastq.gz_merged.fasta	mid_stress	stool	group3	mid_stress_in_stool
