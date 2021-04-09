@@ -2,13 +2,13 @@
 
 
 
-## 1. Run FastQC to allow manual inspection of the quality of sequences
+## 1, run FastQC to allow manual inspection of the quality of sequences
 ```sh
 mkdir fastqc_out
 fastqc -t 4 raw_data/* -o fastqc_out/
 ```
 
-## 2. Rename the files
+## 2, rename the files
 ```sh
 cd raw_data
 for file in *.fastq.gz; do mv $file $(echo $file | cut -d'_' -f1 | cut -d'-' -f1-1)_$(echo $file | cut -d'_' -f4).fastq.gz; done
@@ -20,7 +20,7 @@ paste -d" " stool_f1.txt stool_f5.txt > stool_f1_f5.sh
 ./*.sh
 
 
-## 3.1. trim paired-end reads
+## 3.1, trim paired-end reads
 ```sh
 mkdir trim_data trimmed_unpaired
 cd raw_data
@@ -31,8 +31,7 @@ for file in 19-neg_R1.fastq.gz 1-9135vag_R1.fastq.gz 6-9136vag_R1.fastq.gz 9-914
 
 for file in p8_stool_d00_R1.fastq.gz p8_stool_d00r_R1.fastq.gz  p8_stool_d20_R1.fastq.gz p8_stool_d20r_R1.fastq.gz; do java -jar /home/jhuang/Tools/Trimmomatic-0.36/trimmomatic-0.36.jar PE -threads 16 $file ${file/_R1/_R2} ../trim_data/$file ../trimmed_unpaired/$file ../trim_data/${file/_R1/_R2} ../trimmed_unpaired/${file/_R1/_R2} ILLUMINACLIP:/home/jhuang/Tools/Trimmomatic-0.36/adapters/TruSeq3-PE-2.fa:2:30:10:8:TRUE LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36 AVGQUAL:20; done 2> trimmomatic_pe.log
 ```
-
-## NOTE that step 4 (pandaseq) is better than 3.2, since it removes the primers instead of matching the primers. --> spring into step 4
+#NOTE that step 4 (pandaseq) is better than 3.2, since it removes the primers instead of matching the primers. --> spring into step 4
 
 
 ## 3.2(optional), stitch paired-end reads using mothur
@@ -93,7 +92,7 @@ CCTACGGGGGGCTGCCAAGGCGGCCTGGTTCTGTCAGATTGTCACCGCTTGCCGTGAGACTTGTGACCCTTACCCCGTCA
 ```
 
 
-## 4. stitch the paired-end reads using pandaseq
+## 4, stitch the paired-end reads using pandaseq
 ```sh
 #pandaseq filters internally the reads by quality, length, and primers (see len-dis-gg_v3v4.pdf, cutoff length could be 300, 350, 360 or 380)
 #-p primer       Forward primer sequence or number of bases to be removed.
@@ -112,7 +111,7 @@ mkdir pandaseq.out
 for file in trim_data/*_R1.fastq.gz; do pandaseq -f ${file} -r ${file/_R1.fastq.gz/_R2.fastq.gz} -l 300 -p CCTACGGGNGGCWGCAG -q GACTACHVGGGTATCTAATCC  -w pandaseq.out/$(echo $file | cut -d'/' -f2 | cut -d'_' -f1-3)_merged.fasta >> LOG_pandaseq; done
 ```
 
-## 5. Create two QIIME mapping files
+## 5, create two QIIME mapping files
 ```sh
 validate_mapping_file.py -m map.txt
 ```
@@ -121,14 +120,17 @@ validate_mapping_file.py -m map.txt
 #seqtk seq -A ${sample}.fastq | seqkit seq -w 60 - > ${sample}.fasta
 #done
 #cp processed_controls/*.fasta pandaseq.out/
-## 6. Combine files into a labeled file
+
+
+## 6, combine files into a labeled file
 ```sh
 add_qiime_labels.py -i pandaseq.out -m map_corrected.txt -c FileInput -o combined_fasta
 add_qiime_labels.py -i pandaseq.out -m map_corrected_swab.txt -c FileInput -o combined_fasta_swab
 add_qiime_labels.py -i pandaseq.out -m map_corrected_stool.txt -c FileInput -o combined_fasta_stool
 ```
 
-## 7. Remove chimeric sequences using usearch
+
+## 7, remove chimeric sequences using usearch
 ```sh
 cd combined_fasta
 pyfasta split -n 100 combined_seqs.fna
@@ -163,7 +165,7 @@ rm -rf usearch_checked_combined_*.0*
 ```
 
 
-## 8. Create OTU picking parameter file, and run the entire QIIME open reference picking pipeline with usearch61 for reference picking and usearch61_ref for de novo OTU picking
+## 8, create OTU picking parameter file, and run the entire QIIME open reference picking pipeline with usearch61 for reference picking and usearch61_ref for de novo OTU picking
 ```sh
 echo "pick_otus:similarity 0.97" > clustering_params.txt
 echo "assign_taxonomy:similarity 0.97" >> clustering_params.txt
@@ -177,7 +179,7 @@ pick_open_reference_otus.py -r/home/jhuang/REFs/SILVA_132_QIIME_release/rep_set/
 ```
 
 
-#9.1 for control data
+#9.1, for control data
 ```sh
 summarize_taxa_through_plots.py -i clustering34/otu_table_mc2_w_tax_no_pynast_failures.biom -o plots/taxa_summary34 -s
 mv usearch_checked_combined usearch_checked_combined_ctrl
@@ -186,7 +188,8 @@ mv clustering34 clustering34_ctrl
 mv plots plots_ctrl
 ```
 
-## 9.2 for other data: core diversity analyses
+
+## 9.2, for other data: core diversity analyses
 ```sh
 core_diversity_analyses.py -o./core_diversity_e4753 -i./clustering/otu_table_mc2_w_tax_no_pynast_failures.biom -m./map_corrected.txt -t./clustering/rep_set.tre -e4753 -p./clustering_params.txt
 core_diversity_analyses.py -o./core_diversity_e4753_swab -i./clustering_swab/otu_table_mc2_w_tax_no_pynast_failures.biom -m./map_corrected_swab.txt -t./clustering_swab/rep_set.tre -e4753 -p./clustering_params.txt
@@ -195,7 +198,7 @@ core_diversity_analyses.py -o./core_diversity_e4753_stool -i./clustering_stool/o
 ## --> STEP 12 if using Phyloseq.Rmd
 
 
-## 10. supplements of core diversity analyses
+## 10, supplements of core diversity analyses
 -----------------------
 ---- by SampleType ----
 ```sh
@@ -235,12 +238,13 @@ gzip ./core_diversity_e6899_g6/table_even6899.biom
 ```
 
 
-## 11. mv index.html .index.html
+## 11, mv index.html .index.html
 ```sh
 cp /media/jhuang/Elements/Data_16S_arckNov_re/core_diversity_e10967/index.html ./
 ```
 
-## 12. run Phyloseq.Rmd to get Phyloseq.html (under qiime1-env)
+
+## 12, run Phyloseq.Rmd to get Phyloseq.html (under qiime1-env)
 #https://github.com/vaulot/R_tutorials/tree/master/phyloseq
 ```sh
 cp Phyloseq.Rmd core_diversity_e4753
