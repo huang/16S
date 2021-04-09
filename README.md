@@ -35,7 +35,7 @@ for file in p8_stool_d00_R1.fastq.gz p8_stool_d00r_R1.fastq.gz  p8_stool_d20_R1.
 ## NOTE that step 4 (pandaseq) is better than 3.2, since it removes the primers instead of matching the primers. --> spring into step 4
 
 
-#3.2 
+## 3.2(optional), stitch paired-end reads using mothur
 ```sh
 mkdir trim_contigs;
 for file in trim_data/*_1P.fastq.gz; do mkdir trim_contigs/$(echo $file | cut -d '/' -f2 | cut -d'_' -f1); done
@@ -54,15 +54,13 @@ done
 for dir in *; do \
   mothur "#screen.seqs(fasta=./$dir/stability.trim.contigs.fasta, group=./$dir/stability.contigs.groups, maxambig=0, minlength=380, maxlength=460, maxhomop=6);"; \
 done
-```
 
 #WARNING: tolerant version
 #for dir in 56-488ST 57-514ST; do \
 #mothur "#screen.seqs(fasta=./$dir/stability.trim.contigs.fasta, group=./$dir/stability.contigs.groups, maxambig=6, minlength=200, maxlength=502, maxhomop=10);"; \
 #done
 
-
-#1246
+#filters the reads by primers
 mkdir filtered_reads_with_primer1
 for dir in trim_contigs/*/; do \
   echo "bbduk.sh -Xmx1g in=$dir/stability.trim.contigs.good.fasta outm=filtered_reads_with_primer1/$(echo $dir | cut -d'/' -f2).assembled_filtered.fasta k=17 literal=CCTACGGGNGGCWGCAG mm=f rcomp=t copyundefined 2>>filter1_log.txt;" \
@@ -73,11 +71,8 @@ for dir in filtered_reads_with_primer1/*.12.assembled_filtered.fasta; do \
   bbduk.sh -Xmx1g in=$dir outm=filtered_reads_with_primer2/$(echo $dir | cut -d '/' -f2 | cut -d'.' -f1-2).assembled_filtered.fasta k=21 literal=GACTACHVGGGTATCTAATCC mm=f rcomp=t copyundefined 2>>filter2_log.txt; \
 done
 
-
-
 1-2
 literal=GYTCAGRDYKAACGCTGGCGG
-
 4-6
 
 #Here are the primers used for the 16S V3- V4 sequencing. Underlined are the ILLUMINA adapter sequences.
@@ -92,17 +87,17 @@ CCTACGGGAGGCAGCAGTGGGGAATATTGCGCAATGGGGGGAACCCTGACGGAGCCATGCCGCGTGAATGAAGAAGGCCT
 
 CCTACGGGNGGCWGCAG
 CCTACGGGGGGCTGCCAAGGCGGCCTGGTTCTGTCAGATTGTCACCGCTTGCCGTGAGACTTGTGACCCTTACCCCGTCACTGGTAGTCAGGGTTAGCCGCGCGGAGCCCAAGGGATGCTCCTTGGGGCAAACTAATTCGGCCCAGCTCTTGTAGGCCTTCACCTGGGGTTCCCACTTTGTTCTCTGGGCCGCCTGGAACCACCCCGTGGGCCCCGGGTCTCTTTTTCCCCCCTCTGCGGATTACCCGGTTCCAAGCACGCCATACGATGGCTCCCAGTCCCTCGCCGCGCCCGGGCTACGATGTCGAGGACCTTCGATGAGCTGCTAACCGGAGTGCAAGTCACGCTCGAGGAGTGGAAATTTTATACTGTTTAGATCGCAGAAAAGTCCATCTACCTCACGAGCCAGCACTCGTCATAAGCTGATAATAGAGGGATCAGCCCTTGAACAACCAGAAGAGCCTTAGAGATGGAAAGCTAGATACCCCGGTAGTC
-                                                                    GACTACHVGGGTATCTAATCC
+                                  GACTACHVGGGTATCTAATCC
                                                                     
-     180088      --> 90044
 #-p CCTAC GGGNG GCWGC AG -q GACTA CHVGG GTATC TAATC C 
-## 4. stitch the reads together; and filter the reads by quality, length, and primer (see len-dis-gg_v3v4.pdf, cutoff length could be 350, 360 or 380)
-```sh
-mkdir pandaseq.out
-#-p primer       Forward primer sequence or number of bases to be removed.
-#-q primer       Reverse primer sequence or number of bases to be removed.
 ```
 
+
+## 4. stitch the paired-end reads using pandaseq
+```sh
+#pandaseq filters internally the reads by quality, length, and primers (see len-dis-gg_v3v4.pdf, cutoff length could be 300, 350, 360 or 380)
+#-p primer       Forward primer sequence or number of bases to be removed.
+#-q primer       Reverse primer sequence or number of bases to be removed.
 #@M03701:126:000000000-B6DW9:1:1101:18034:1879 1:N:0:9
 #CCTACGGGGGGCTGCAG #TAGGGAATCTTCCACAATGGACGCAAGTCTGATGGAGCAACGCCGCGTGAGTGAAGAAGGGTTTCGGCTCGTAAAGCTCTGTTGGTAGTGAAGAAAGATAGAGGTAGTAACTGGCCTTTATTTGACGGTAATTACCTAGAAAGTCACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTGGCAAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGTGCAGGCGGGT
 #@M03701:126:000000000-B6DW9:1:1101:18034:1879 2:N:0:9
@@ -110,9 +105,10 @@ mkdir pandaseq.out
 #-->
 #>M03701:126:000000000-B6DW9:1:1101:18034:1879:9
 #TAGGGAATCTTCCACAATGGACGCAAGTCTGATGGAGCAACGCCGCGTGAGTGAAGAAGGGTTTCGGCTCGTAAAGCTCTGTTGGTAGTGAAGAAAGATAGAGGTAGTAACTGGCCTTTATTTGACGGTAATTACCTAGAAAGTCACGGCTAACTACGTGCCAGCAGCCGCGGTAATACGTAGGTGGCAAGCGTTGTCCGGATTTATTGGGCGTAAAGCGAGTGCAGGCGGTTCAATAAGTCTGATGTGAAAGCCTTCGGCTCAACCGGAGAATTGCATCAGAAACTGTTGAACTTGAGTGCAGAAGAGGAGAGTGGAACTCCATGTGTAGCGGTGGAATGCGTAGATATATGGAAGAACACCAGTGGCGAAGGCGGCTCTCTGGTCTGCAACTGACGCTGAGGCTCGAAAGCATGGGTAGCGAACA
+```
+```sh
 mkdir pandaseq.out
 #for file in trim_data/*_R1.fastq.gz; do pandaseq -f ${file} -r ${file/_R1.fastq.gz/_R2.fastq.gz} -l 300 -p CCTACGGGNGGCWGCAG -q GACTACHVGGGTATCTAATCC  -w pandaseq.out/$(echo $file | cut -d'/' -f2 | cut -d'_' -f1)_merged.fasta >> LOG_pandaseq; done
-```sh
 for file in trim_data/*_R1.fastq.gz; do pandaseq -f ${file} -r ${file/_R1.fastq.gz/_R2.fastq.gz} -l 300 -p CCTACGGGNGGCWGCAG -q GACTACHVGGGTATCTAATCC  -w pandaseq.out/$(echo $file | cut -d'/' -f2 | cut -d'_' -f1-3)_merged.fasta >> LOG_pandaseq; done
 ```
 
