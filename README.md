@@ -165,7 +165,7 @@ rm -rf usearch_checked_combined_*.0*
 ```
 
 
-## 8, create OTU picking parameter file, and run the entire QIIME open reference picking pipeline with usearch61 for reference picking and usearch61_ref for de novo OTU picking
+## 8, create OTU picking parameter file, and run the QIIME open reference picking pipeline
 ```sh
 echo "pick_otus:similarity 0.97" > clustering_params.txt
 echo "assign_taxonomy:similarity 0.97" >> clustering_params.txt
@@ -173,13 +173,14 @@ echo "parallel_align_seqs_pynast:template_fp /home/jhuang/REFs/SILVA_132_QIIME_r
 echo "assign_taxonomy:reference_seqs_fp /home/jhuang/REFs/SILVA_132_QIIME_release/rep_set/rep_set_16S_only/99/silva_132_99_16S.fna" >> clustering_params.txt
 echo "assign_taxonomy:id_to_taxonomy_fp /home/jhuang/REFs/SILVA_132_QIIME_release/taxonomy/16S_only/99/consensus_taxonomy_7_levels.txt" >> clustering_params.txt
 echo "alpha_diversity:metrics chao1,observed_otus,shannon,PD_whole_tree" >> clustering_params.txt
+#with usearch61 for reference picking and usearch61_ref for de novo OTU picking
 pick_open_reference_otus.py -r/home/jhuang/REFs/SILVA_132_QIIME_release/rep_set/rep_set_16S_only/99/silva_132_99_16S.fna -i combined_fasta/combined_nonchimera_seqs.fna -o clustering/ -p clustering_params.txt --parallel
 pick_open_reference_otus.py -r/home/jhuang/REFs/SILVA_132_QIIME_release/rep_set/rep_set_16S_only/99/silva_132_99_16S.fna -i combined_fasta_swab/combined_nonchimera_seqs.fna -o clustering_swab/ -p clustering_params.txt --parallel
 pick_open_reference_otus.py -r/home/jhuang/REFs/SILVA_132_QIIME_release/rep_set/rep_set_16S_only/99/silva_132_99_16S.fna -i combined_fasta_stool/combined_nonchimera_seqs.fna -o clustering_stool/ -p clustering_params.txt --parallel
 ```
 
 
-#9.1, for control data
+## 9.1(optional), for control data
 ```sh
 summarize_taxa_through_plots.py -i clustering34/otu_table_mc2_w_tax_no_pynast_failures.biom -o plots/taxa_summary34 -s
 mv usearch_checked_combined usearch_checked_combined_ctrl
