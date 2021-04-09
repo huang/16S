@@ -202,39 +202,39 @@ core_diversity_analyses.py -o./core_diversity_e4753_stool -i./clustering_stool/o
 ## 10, supplements of core diversity analyses
 #---- by SampleType ----
 ```sh
-gunzip ./core_diversity_e6899_g6/table_mc6899.biom.gz
-mkdir ./core_diversity_e6899_g6/taxa_plots_SampleType
-collapse_samples.py -m ./map_corrected.txt -b./core_diversity_e6899_g6/table_mc6899.biom --output_biom_fp ./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_otu_table.biom --output_mapping_fp ./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_map_corrected.txt --collapse_fields "SampleType"
-gzip ./core_diversity_e6899_g6/table_mc6899.biom
+gunzip ./core_diversity_e6899/table_mc6899.biom.gz
+mkdir ./core_diversity_e6899/taxa_plots_SampleType
+collapse_samples.py -m ./map_corrected.txt -b./core_diversity_e6899/table_mc6899.biom --output_biom_fp ./core_diversity_e6899/taxa_plots_SampleType/SampleType_otu_table.biom --output_mapping_fp ./core_diversity_e6899/taxa_plots_SampleType/SampleType_map_corrected.txt --collapse_fields "SampleType"
+gzip ./core_diversity_e6899/table_mc6899.biom
 
-sort_otu_table.py -i./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_otu_table.biom -o./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_otu_table_sorted.biom
-summarize_taxa.py -i./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_otu_table_sorted.biom -o./core_diversity_e6899_g6/taxa_plots_SampleType/
+sort_otu_table.py -i./core_diversity_e6899/taxa_plots_SampleType/SampleType_otu_table.biom -o./core_diversity_e6899/taxa_plots_SampleType/SampleType_otu_table_sorted.biom
+summarize_taxa.py -i./core_diversity_e6899/taxa_plots_SampleType/SampleType_otu_table_sorted.biom -o./core_diversity_e6899/taxa_plots_SampleType/
 
-plot_taxa_summary.py -i./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_otu_table_sorted_L2.txt,./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_otu_table_sorted_L3.txt,./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_otu_table_sorted_L4.txt,./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_otu_table_sorted_L5.txt,./core_diversity_e6899_g6/taxa_plots_SampleType/SampleType_otu_table_sorted_L6.txt -o./core_diversity_e6899_g6/taxa_plots_SampleType/taxa_summary_plots/
+plot_taxa_summary.py -i./core_diversity_e6899/taxa_plots_SampleType/SampleType_otu_table_sorted_L2.txt,./core_diversity_e6899/taxa_plots_SampleType/SampleType_otu_table_sorted_L3.txt,./core_diversity_e6899/taxa_plots_SampleType/SampleType_otu_table_sorted_L4.txt,./core_diversity_e6899/taxa_plots_SampleType/SampleType_otu_table_sorted_L5.txt,./core_diversity_e6899/taxa_plots_SampleType/SampleType_otu_table_sorted_L6.txt -o./core_diversity_e6899/taxa_plots_SampleType/taxa_summary_plots/
 
 ##alpha diversity##
-compare_alpha_diversity.py -i./core_diversity_e6899_g6/arare_max6899/alpha_div_collated/PD_whole_tree.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/arare_max6899_SampleType/compare_PD_whole_tree -n 9999
-compare_alpha_diversity.py -i./core_diversity_e6899_g6/arare_max6899/alpha_div_collated/chao1.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/arare_max6899_SampleType/compare_chao1 -n 9999
-compare_alpha_diversity.py -i./core_diversity_e6899_g6/arare_max6899/alpha_div_collated/observed_otus.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/arare_max6899_SampleType/compare_observed_otus -n 9999
-compare_alpha_diversity.py -i./core_diversity_e6899_g6/arare_max6899/alpha_div_collated/shannon.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/arare_max6899_SampleType/compare_shannon -n 9999
-compare_alpha_diversity.py -i./core_diversity_e6899_g6/arare_max6899/alpha_div_collated/PD_whole_tree.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/arare_max6899_SampleType/compare_PD_whole_tree_tt -t parametric
-compare_alpha_diversity.py -i./core_diversity_e6899_g6/arare_max6899/alpha_div_collated/chao1.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/arare_max6899_SampleType/compare_chao1_tt -t parametric
-compare_alpha_diversity.py -i./core_diversity_e6899_g6/arare_max6899/alpha_div_collated/observed_otus.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/arare_max6899_SampleType/compare_observed_otus_tt -t parametric
-compare_alpha_diversity.py -i./core_diversity_e6899_g6/arare_max6899/alpha_div_collated/shannon.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/arare_max6899_SampleType/compare_shannon_tt -t parametric
+compare_alpha_diversity.py -i./core_diversity_e6899/arare_max6899/alpha_div_collated/PD_whole_tree.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899/arare_max6899_SampleType/compare_PD_whole_tree -n 9999
+compare_alpha_diversity.py -i./core_diversity_e6899/arare_max6899/alpha_div_collated/chao1.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899/arare_max6899_SampleType/compare_chao1 -n 9999
+compare_alpha_diversity.py -i./core_diversity_e6899/arare_max6899/alpha_div_collated/observed_otus.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899/arare_max6899_SampleType/compare_observed_otus -n 9999
+compare_alpha_diversity.py -i./core_diversity_e6899/arare_max6899/alpha_div_collated/shannon.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899/arare_max6899_SampleType/compare_shannon -n 9999
+compare_alpha_diversity.py -i./core_diversity_e6899/arare_max6899/alpha_div_collated/PD_whole_tree.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899/arare_max6899_SampleType/compare_PD_whole_tree_tt -t parametric
+compare_alpha_diversity.py -i./core_diversity_e6899/arare_max6899/alpha_div_collated/chao1.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899/arare_max6899_SampleType/compare_chao1_tt -t parametric
+compare_alpha_diversity.py -i./core_diversity_e6899/arare_max6899/alpha_div_collated/observed_otus.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899/arare_max6899_SampleType/compare_observed_otus_tt -t parametric
+compare_alpha_diversity.py -i./core_diversity_e6899/arare_max6899/alpha_div_collated/shannon.txt -m ./map_corrected.txt -c "SampleType" -o./core_diversity_e6899/arare_max6899_SampleType/compare_shannon_tt -t parametric
 
 ##beta diversity statistics##
-make_distance_boxplots.py -d./core_diversity_e6899_g6/bdiv_even6899/weighted_unifrac_dm.txt -f"SampleType" -o./core_diversity_e6899_g6/bdiv_even6899_SampleType/weighted_unifrac_boxplots/ -m ./map_corrected.txt --save_raw_data -n 999
-make_distance_boxplots.py -d./core_diversity_e6899_g6/bdiv_even6899/unweighted_unifrac_dm.txt -f"SampleType" -o./core_diversity_e6899_g6/bdiv_even6899_SampleType/unweighted_unifrac_boxplots/ -m ./map_corrected.txt --save_raw_data -n 999
-#make_distance_boxplots.py -d./core_diversity_e6899_g6/bdiv_even6899/unweighted_unifrac_dm.txt -f"SampleType" -o./core_diversity_e6899_g6/bdiv_even6899_SampleType/unweighted_unifrac_boxplots/ -m ./map_corrected.txt -g png
-compare_categories.py --method adonis -i./core_diversity_e6899_g6/bdiv_even6899/unweighted_unifrac_dm.txt -m./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/bdiv_even6899_SampleType/adonis_out -n 999
-compare_categories.py --method anosim -i./core_diversity_e6899_g6/bdiv_even6899/unweighted_unifrac_dm.txt -m./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/bdiv_even6899_SampleType/unweighted_anosim_out -n 999
-compare_categories.py --method anosim -i./core_diversity_e6899_g6/bdiv_even6899/weighted_unifrac_dm.txt -m./map_corrected.txt -c "SampleType" -o./core_diversity_e6899_g6/bdiv_even6899_SampleType/weighted_anosim_out -n 999
+make_distance_boxplots.py -d./core_diversity_e6899/bdiv_even6899/weighted_unifrac_dm.txt -f"SampleType" -o./core_diversity_e6899/bdiv_even6899_SampleType/weighted_unifrac_boxplots/ -m ./map_corrected.txt --save_raw_data -n 999
+make_distance_boxplots.py -d./core_diversity_e6899/bdiv_even6899/unweighted_unifrac_dm.txt -f"SampleType" -o./core_diversity_e6899/bdiv_even6899_SampleType/unweighted_unifrac_boxplots/ -m ./map_corrected.txt --save_raw_data -n 999
+#make_distance_boxplots.py -d./core_diversity_e6899/bdiv_even6899/unweighted_unifrac_dm.txt -f"SampleType" -o./core_diversity_e6899/bdiv_even6899_SampleType/unweighted_unifrac_boxplots/ -m ./map_corrected.txt -g png
+compare_categories.py --method adonis -i./core_diversity_e6899/bdiv_even6899/unweighted_unifrac_dm.txt -m./map_corrected.txt -c "SampleType" -o./core_diversity_e6899/bdiv_even6899_SampleType/adonis_out -n 999
+compare_categories.py --method anosim -i./core_diversity_e6899/bdiv_even6899/unweighted_unifrac_dm.txt -m./map_corrected.txt -c "SampleType" -o./core_diversity_e6899/bdiv_even6899_SampleType/unweighted_anosim_out -n 999
+compare_categories.py --method anosim -i./core_diversity_e6899/bdiv_even6899/weighted_unifrac_dm.txt -m./map_corrected.txt -c "SampleType" -o./core_diversity_e6899/bdiv_even6899_SampleType/weighted_anosim_out -n 999
 
 ##using even.biom file to generate group significance##
-gunzip ./core_diversity_e6899_g6/table_even6899.biom.gz
-group_significance.py -i./core_diversity_e6899_g6/table_even6899.biom -m./map_corrected.txt -c "SampleType" -s kruskal_wallis -o./core_diversity_e6899_g6/group_significance_SampleType_kw_ocs.txt --biom_samples_are_superset --print_non_overlap
-group_significance.py -i./core_diversity_e6899_g6/table_even6899.biom -m./map_corrected.txt -c "SampleType" -s g_test -o./core_diversity_e6899_g6/group_significance_SampleType_gtest_ocs.txt
-gzip ./core_diversity_e6899_g6/table_even6899.biom
+gunzip ./core_diversity_e6899/table_even6899.biom.gz
+group_significance.py -i./core_diversity_e6899/table_even6899.biom -m./map_corrected.txt -c "SampleType" -s kruskal_wallis -o./core_diversity_e6899/group_significance_SampleType_kw_ocs.txt --biom_samples_are_superset --print_non_overlap
+group_significance.py -i./core_diversity_e6899/table_even6899.biom -m./map_corrected.txt -c "SampleType" -s g_test -o./core_diversity_e6899/group_significance_SampleType_gtest_ocs.txt
+gzip ./core_diversity_e6899/table_even6899.biom
 ```
 
 
