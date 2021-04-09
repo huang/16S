@@ -200,8 +200,7 @@ core_diversity_analyses.py -o./core_diversity_e4753_stool -i./clustering_stool/o
 
 
 ## 10, supplements of core diversity analyses
------------------------
----- by SampleType ----
+#---- by SampleType ----
 ```sh
 gunzip ./core_diversity_e6899_g6/table_mc6899.biom.gz
 mkdir ./core_diversity_e6899_g6/taxa_plots_SampleType
