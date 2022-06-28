@@ -3,7 +3,7 @@
 
 ## 0, setup environment
 ```sh
-conda create env -n qiime1
+conda create -n qiime1
 conda activate qiime1
 conda install -c bioconda qiime
 ```
