@@ -1,6 +1,13 @@
 # 16S
 
 
+## 0, setup environment
+conda create env -n qiime1
+conda activate qiime1
+conda install -c bioconda qiime
+```sh
+
+```
 
 ## 1, run FastQC to allow manual inspection of the quality of sequences
 ```sh
