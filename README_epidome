@@ -1,0 +1,369 @@
+
+
+#--rename--
+#for file in Extraction*.fastq.gz; do mv $file $(echo $file | cut -d'.' -f1 | cut -d'_' -f1)-$(echo $file | cut -d'.' -f1 | cut -d'_' -f2)-$(echo $file | cut -d'.' -f1 | cut -d'_' -f3)_$(echo $file | cut -d'.' -f2 | cut -d'_' -f1).fastq.gz; done
+for file in *.fastq.gz; do mv $file $(echo $file | cut -d'_' -f1)_$(echo $file | cut -d'_' -f3).fastq.gz; done
+
+
+for file in *R1.fastq.gz; do java -jar /home/jhuang/Tools/Trimmomatic-0.36/trimmomatic-0.36.jar PE -threads 16 $file ${file/R1/R2} ../trimmed_paired/$file ../trimmed_unpaired/$file ../trimmed_paired/${file/R1/R2} ../trimmed_unpaired/${file/R1/R2} ILLUMINACLIP:/home/jhuang/Tools/Trimmomatic-0.36/adapters/TruSeq3-PE-2.fa:2:30:10:8:TRUE LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36 AVGQUAL:20; done 2> trimmomatic_pe.log
+
+5′-CGATGCKAAAGTGCCGAATA-3′/5′-CTTCATTTAAGAAGCCACCWTGACT-3′ for yccH
+5′-TGGGTATGRCAATCACTTTACA-3′/5′-GCATCAAAAGCACTCTCATTACC-3′  for g216
+for file in trimmed_paired/*R1.fastq.gz; do pandaseq -f ${file} -r ${file/R1.fastq.gz/R2.fastq.gz} -l 450 -p CGATGCKAAAGTGCCGAATA -q CTTCATTTAAGAAGCCACCWTGACT  -w pandaseq.out/$(echo $file | cut -d'/' -f2 | cut -d'_' -f1-3)_merged.fasta >> LOG_pandaseq; done
+
+primer sequences for amplification of the two targets
+#Primer  CGATGCKAAAGTGCCGAATA
+#Trimmed NGATGCGAAAGTGCCGAATA ACTTTAATTTTGATCGCCTCCTTATCGATCAAGATCATAATAACCACGTCGTACTATTTGCGATTAGCAAAGACCGTCATGAAGTAGTTAAACTTAAGACAACGATGAAAGGGAATAATGTTGATAAAGCTTTTAAAAGTATCGAACCTGACATGCAGCCCTATAAGGAAATCATCACGAATAAAGATACAATAG
+ACAAAGCAACACACGTGTTTGCACCAAGCAAACCGAAAGACTTAAAGAAGTATAGCATGGTCTTCAATAAGATCAGTGTTGAAAG
+#Primer  CTTCATTTAAGAAGCCACCWTGACT
+#Trimmed CTTCATTTAAGAAGCCACCATGACT 
+ATTTATAAACTCGTATGNGCCTGGG (--> CCCAGGCNCATACGAGTTTATAAAT) ATGGTTTCTTGCATGTTGCTTGAACTTTTCGCGTCTTCAGATAAATTCTTATAATGATACATTTCATCTTTATCATTGTAGTTGGCGACGCCAGTATTGTTGTTGTATGTTGTCGTACAACTTTGAGAGCTACGAACAATCGTTGAATCATCAAATAGTATTGAGTTCATGCGTTCAACACTGATCGTATTGAAGACCATGCGATACGTCTTTAAGTCTTTCGGTTTGCTTGGTGCAACCACGTGTGTTGG
+----->
+ACTTTAATTTTGATCGCCTCCTTATCGATCAAGATCATAATAACCACGTCGTACTATATGCGATTAGCAAGGACCGTCATGAAGTAGTTAAACTTAAGACAACGATGAAAGGGAATAACGTTGATAAAGCTTTTAAAAGTATCGAACCTGATTTGCAGCCCTATACGGAAATCATCACGAATAAAGATACAATCGACAAAGCAACACACGTGTTAGCACCAAGCAAACCGAAAGACTTAAAGACGTATCGCATGGTCTTCAATACGATTAGTGTTGAACGCATGGACTCAATACTATTTGATGATTCAACGATTGTTCGTAGCTCTCAAAGTGGTACGACAACATACAACAACAATACTGGCGTCGCCAACTACAACGATAAAGATGAAATGTATCATTATAAGAATTTATCTGAAGACGCGAAAAGTTCAAGCAACATGCAAGAAACCAT CCCAGGCACATACGAGTTTATAAAT
+
+for file in trimmed_paired/*R1.fastq.gz; do pandaseq -f ${file} -r ${file/R1.fastq.gz/R2.fastq.gz} -l 450 -p TGGGTATGRCAATCACTTTACA -q GCATCAAAAGCACTCTCATTACC  -w pandaseq.out/$(echo $file | cut -d'/' -f2 | cut -d'_' -f1-3)_merged.fasta >> LOG_pandaseq; done
+
+
+
+
+
+
+
+## 1, run FastQC to allow manual inspection of the quality of sequences
+```sh
+mkdir fastqc_out
+fastqc -t 4 raw_data/* -o fastqc_out/
+```
+
+## 2, rename the files
+```sh
+cd raw_data
+for file in *.fastq.gz; do mv $file $(echo $file | cut -d'_' -f1 | cut -d'-' -f1-1)_$(echo $file | cut -d'_' -f4).fastq.gz; done
+cd ..
+```
+
+
+
+
+## 3.1, trim paired-end reads
+```sh
+mkdir trim_data trimmed_unpaired
+cd raw_data
+
+for file in A24.1_R1.fastq.gz A25.3_R1.fastq.gz Aachen3_R1.fastq.gz Aachen6_R1.fastq.gz Aachen8_R1.fastq.gz Aachen10_R1.fastq.gz Aachen13_R1.fastq.gz Aachen14_R1.fastq.gz Aachen15_R1.fastq.gz Aachen16_R1.fastq.gz; do java -jar /home/jhuang/Tools/Trimmomatic-0.36/trimmomatic-0.36.jar PE -threads 16 $file ${file/_R1/_R2} ../trim_data/$file ../trimmed_unpaired/$file ../trim_data/${file/_R1/_R2} ../trimmed_unpaired/${file/_R1/_R2} ILLUMINACLIP:/home/jhuang/Tools/Trimmomatic-0.36/adapters/TruSeq3-PE-2.fa:2:30:10:8:TRUE LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36 AVGQUAL:20; done 2> trimmomatic_pe.log
+```
+#NOTE that step 4 (pandaseq) is better than 3.2, since it removes the primers instead of matching the primers. --> spring into step 4
+
+
+```sh
+mkdir pandaseq.out
+for file in trim_data/*_R1.fastq.gz; do pandaseq -f ${file} -r ${file/_R1.fastq.gz/_R2.fastq.gz} -l 300 -p CCTACGGGNGGCWGCAG -q GACTACHVGGGTATCTAATCC  -w pandaseq.out/$(echo $file | cut -d'/' -f2 | cut -d'_' -f1-3)_merged.fasta >> LOG_pandaseq; done
+```
+
+## 5, create two QIIME mapping files
+```sh
+validate_mapping_file.py -m map.txt
+```
+
+## 6, combine files into a labeled file
+```sh
+add_qiime_labels.py -i pandaseq.out -m map_corrected.txt -c FileInput -o combined_fasta
+```
+
+## 7, remove chimeric sequences using usearch
+```sh
+cd combined_fasta
+pyfasta split -n 2 combined_seqs.fna
+for i in {0..1}; do echo "identify_chimeric_seqs.py -i combined_fasta/combined_seqs.fna.${i} -m usearch61 -o usearch_checked_combined.${i}/ -r ~/REFs/gg_97_otus_4feb2011_fw_rc.fasta --threads=14;" >> uchime_commands.sh; done
+mv uchime_commands.sh ..
+./uchime_commands.sh
+cat usearch_checked_combined.0/chimeras.txt usearch_checked_combined.1/chimeras.txt > chimeras.txt
+filter_fasta.py -f combined_fasta/combined_seqs.fna -o combined_fasta/combined_nonchimera_seqs.fna -s chimeras.txt -n;
+rm -rf usearch_checked_combined.0*
+
+
+## 8, create OTU picking parameter file, and run the QIIME open reference picking pipeline
+```sh
+echo "pick_otus:similarity 0.97" > clustering_params.txt
+echo "assign_taxonomy:similarity 0.97" >> clustering_params.txt
+echo "parallel_align_seqs_pynast:template_fp /home/jhuang/REFs/SILVA_132_QIIME_release/core_alignment/80_core_alignment.fna" >> clustering_params.txt
+echo "assign_taxonomy:reference_seqs_fp /home/jhuang/REFs/SILVA_132_QIIME_release/rep_set/rep_set_16S_only/99/silva_132_99_16S.fna" >> clustering_params.txt
+echo "assign_taxonomy:id_to_taxonomy_fp /home/jhuang/REFs/SILVA_132_QIIME_release/taxonomy/16S_only/99/consensus_taxonomy_7_levels.txt" >> clustering_params.txt
+echo "alpha_diversity:metrics chao1,observed_otus,shannon,PD_whole_tree" >> clustering_params.txt
+#with usearch61 for reference picking and usearch61_ref for de novo OTU picking
+pick_open_reference_otus.py -r/home/jhuang/REFs/SILVA_132_QIIME_release/rep_set/rep_set_16S_only/99/silva_132_99_16S.fna -i combined_fasta/combined_nonchimera_seqs.fna -o clustering/ -p clustering_params.txt --parallel
+```
+
+
+## 9.1(optional), for control data
+```sh
+summarize_taxa_through_plots.py -i clustering34/otu_table_mc2_w_tax_no_pynast_failures.biom -o plots/taxa_summary34 -s
+mv usearch_checked_combined usearch_checked_combined_ctrl
+mv combined34_fasta combined34_fasta_ctrl
+mv clustering34 clustering34_ctrl
+mv plots plots_ctrl
+```
+
+
+## 9.2, for other data: core diversity analyses
+```sh
+core_diversity_analyses.py -o./core_diversity_e100 -i./clustering/otu_table_mc2_w_tax_no_pynast_failures.biom -m./map_corrected.txt -t./clustering/rep_set.tre -e100 -p./clustering_params.txt
+```
+16S V3-V4
+Total                  paired
+Aachen8: 3.759
+Aachen10: 20.169
+Aachen6: 23.452
+Aachen3: 23.467
+A25.3: 24.236
+Aachen13: 25.161
+Aachen15: 26.994
+Aachen14: 27.030
+Aachen16: 29.625
+A24.1: 33.258
+
+
+16S V3-V4
+98106*2
+
+
+Processing: A24.1 
+Sample 1 - 98106 reads in 11862 unique sequences.
+Sample 1 - 98106 reads in 12708 unique sequences.
+Duplicate sequences in merged output.
+Processing: A25.3 
+Sample 1 - 89271 reads in 15927 unique sequences.
+Sample 1 - 89271 reads in 20072 unique sequences.
+Processing: Aachen10 
+Sample 1 - 54049 reads in 4980 unique sequences.
+Sample 1 - 54049 reads in 5517 unique sequences.
+Processing: Aachen13 
+Sample 1 - 78014 reads in 6452 unique sequences.
+Sample 1 - 78014 reads in 8015 unique sequences.
+Processing: Aachen14 
+Sample 1 - 80564 reads in 5468 unique sequences.
+Sample 1 - 80564 reads in 6697 unique sequences.
+Processing: Aachen15 
+Sample 1 - 86279 reads in 7072 unique sequences.
+Sample 1 - 86279 reads in 7449 unique sequences.
+Processing: Aachen16 
+Sample 1 - 81970 reads in 5016 unique sequences.
+Sample 1 - 81970 reads in 6708 unique sequences.
+Processing: Aachen3 
+Sample 1 - 76038 reads in 7859 unique sequences.
+Sample 1 - 76038 reads in 9737 unique sequences.
+Processing: Aachen6 
+Sample 1 - 82354 reads in 8650 unique sequences.
+Sample 1 - 82354 reads in 11172 unique sequences.
+Processing: Aachen8 
+Sample 1 - 58722 reads in 4944 unique sequences.
+Sample 1 - 58722 reads in 8385 unique sequences.
+Duplicate sequences detected and merged.
+Duplicate sequences detected and merged.
+
+
+
+
+
+
+# ----------------------------------- FOR EPIDOME ---------------------------
+
+  
+# ---------------------------------
+# ---- STEP0: quality controls ----  
+#under testrun2 should have epidome->/home/jhuang/Tools/epidome and rawdata
+#(r4_base)R
+BiocManager::install("dada2")
+library(dada2); packageVersion("dada2")
+path <- "~/DATA/Data_Holger_Epidome/testrun2/raw_data" # CHANGE ME to the directory containing the fastq files after unzipping.
+list.files(path)
+
+# Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
+fnFs <- sort(list.files(path, pattern=".R1.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern=".R2.fastq.gz", full.names = TRUE))
+# Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
+sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
+
+plotQualityProfile(fnFs[1:2])
+plotQualityProfile(fnRs[1:2])
+
+
+
+
+#--------------------------------------------------------------------------------------------------------
+#---- STEP1: cutadapt instead of Trimmomatic (see ~/DATA/Data_Holger_Epidome/epidome/scripts/EPIDOME_yycH_cutadapt_loop.sh) ----
+#epidome/scripts/EPIDOME_yycH_cutadapt_loop.sh 
+
+#5′-CGATGCKAAAGTGCCGAATA-3′/5′-CTTCATTTAAGAAGCCACCWTGACT-3′ for yccH
+#5′-TGGGTATGRCAATCACTTTACA-3′/5′-GCATCAAAAGCACTCTCATTACC-3′  for g216
+cd raw_data
+mkdir cutadapted_yccH cutadapted_g216
+for file in *_R1.fastq.gz; do 
+cutadapt -e 0.06 -g CGATGCKAAAGTGCCGAATA -G CTTCATTTAAGAAGCCACCWTGACT --pair-filter=any -o ../cutadapted_yccH/${file} --paired-output ../cutadapted_yccH/${file/R1.fastq.gz/R2.fastq.gz} --discard-untrimmed $file ${file/R1.fastq.gz/R2.fastq.gz}; 
+done
+for file in *_R1.fastq.gz; do 
+cutadapt -e 0.06 -g TGGGTATGRCAATCACTTTACA -G GCATCAAAAGCACTCTCATTACC --pair-filter=any -o ../cutadapted_g216/${file} --paired-output ../cutadapted_g216/${file/R1.fastq.gz/R2.fastq.gz} --discard-untrimmed $file ${file/R1.fastq.gz/R2.fastq.gz}; 
+done
+
+
+
+# TO BE DELETED! 
+##### Load dada2 output and metadata into R, make sure rownames in metadata match names of isolates
+#epi01_table = read.table("epi01_dada_output.csv",sep = ";",header=TRUE,row.names=1)
+#epi02_table = read.table("epi02_dada_output.csv",sep = ";",header=TRUE,row.names=1)
+#metadata_table = read.table("metadata_table.txt")
+#
+##### Setup object for easy handling of data
+#epidome_object = setup_epidome_object(epi01_table,epi02_table,metadata_table)
+
+
+
+
+#----------------------------------------------------------------------------------------------------------
+#---- STEP2 checking how many reads can be stitching from cutadapted_* to filtered_* (see ~/DATA/Data_Holger_Epidome/epidome/scripts/dada2_for_EPIDOME_yycH_runwise_pipeline.R) ----
+#Input: cutadapted_yccH, cutadapted_g216
+#Outputs: 16S_seqtab_from_dada2.rds
+#         seqtab.csv
+#         seqtab_nochim_16S.rds
+#         seqtab_nochim_16S.csv
+#         16S_seqtab_image.RData
+#         track_16S.csv
+#RUN: (r4_base) ./my_EPIDOME_yycH_runwise_pipeline.R
+#RUN: (r4_base) ./my_EPIDOME_g216_runwise_pipeline.R
+#RUN: (r4_base) ./my_EPIDOME_16S_runwise_pipeline.R
+
+
+
+#-------------------------------------------------------------------------------------------------
+#---STEP3 stitching and removing chimeras (see ~/DATA/Data_Holger_Epidome/epidome/scripts/Combine_and_Remove_Chimeras_yycH.R) ----
+#my_Combine_and_Remove_Chimeras_g216.R is a part of my_EPIDOME_yycH_runwise_pipeline.R (see lines 53-55) --> IGNORED!
+
+
+
+
+# ---------------------------------------------------------------------
+# ---- STEP Classification: epidome/scripts/ASV_blast_classification.py ----
+#Input: ASV_seqs.fasta and ASV_blast.txt
+#Output files are classified.csv
+
+seqtab_yycH_reseq29_from_dada2.csv
+
+
+
+#TODO: manually generated yycH_seqtab_ASV_seqs.fasta generated from seqtab_nochim_g216.csv
+cp seqtab_nochim_g216.csv g216_seqtab_ASV_seqs.fasta
+#in kate ";"-->"\n>\n"
+
+
+
+python3 epidome/scripts/ASV_blast_classification.py   seqtab_nochim_g216.csv g216_seqtab_ASV_seqs.fasta  epidome/DB/g216_ref_aln.fasta  g216_seqtab_ASV_blast.txt g216_seqtab.csv.classified.csv 99.5
+python3 epidome/scripts/ASV_blast_classification.py   seqtab_nochim_yycH.csv yycH_seqtab_ASV_seqs.fasta  epidome/DB/yycH_ref_aln.fasta  yycH_seqtab_ASV_blast.txt yycH_seqtab.csv.classified.csv 99.5
+
+
+#DEL: python3 epidome/scripts/ASV_blast_classification.py   yycH_seqtab.csv yycH_seqtab.csv.ASV_seqs.fasta  epidome/DB/yycH_ref_aln.fasta yycH_seqtab.csv.ASV_blast.txt yycH_seqtab.csv.classified.csv 99.5
+#DEL: python3 epidome/scripts/ASV_blast_classification_combined.py -p1 190920_run1_yycH_seqtab_from_dada2.csv -p2 190920_run1_G216_seqtab_from_dada2.csv -p1_ref epidome/DB/yycH_ref_aln.fasta -p2_ref epidome/DB/g216_ref_aln.fasta 
+
+
+
+
+
+rename "seqseq2" --> seq2
+sed -i -e s/seq//g 190920_run1_yycH_seqtab_from_dada2.csv.ASV_blast.txt
+sed -i -e s/seqseq/seq/g 190920_run1_yycH_seqtab_from_dada2.csv.classified.csv
+diff 190920_run1_yycH_seqtab_from_dada2.csv.ASV_seqs.fasta epidome/example_data/190920_run1_yycH_seqtab_from_dada2.csv.ASV_seqs.fasta
+diff 190920_run1_yycH_seqtab_from_dada2.csv.ASV_blast.txt epidome/example_data/190920_run1_yycH_seqtab_from_dada2.csv.ASV_blast.txt
+diff 190920_run1_yycH_seqtab_from_dada2.csv.classified.csv epidome/example_data/190920_run1_yycH_seqtab_from_dada2.csv.classified.csv
+
+#AAAT";"seq37,36";0;
+
+
+#"ASV";"Seq_number";"even-mock3-1_S258_L001";"even-mock3-2_S282_L001";"even-mock3-3_S199_L001";"staggered-mock3-1_S270_L001";"staggered-mock3-2_S211_L001";"staggered-mock3-3_S223_L001"
+#"ASV";"Seq_number";"Extraction_control_1";"Extraction_control_2";"P01_nose_1";"P01_nose_2";"P01_skin_1";"P01_skin_2";"P02_nose_1";"P02_nose_2";"P02_skin_1";"P02_skin_2";"P03_nose_1";"P03_nose_2";"P03_skin_1";"P03_skin_2";"P04_nose_1";"P04_nose_2";"P04_skin_1";"P04_skin_2";"P05_nose_1";"P05_nose_2";"P05_skin_1";"P05_skin_2";"P06_nose_1";"P06_nose_2";"P06_skin_1";"P06_skin_2";"P07_nose_1";"P07_nose_2";"P07_skin_1";"P07_skin_2";"P08_nose_1";"P08_nose_2";"P08_skin_1";"P08_skin_2";"P09_nose_1";"P09_nose_2";"P09_skin_1";"P09_skin_2";"P10_nose_1";"P10_nose_2";"P10_skin_1";"P10_skin_2";"P11_nose_1";"P11_nose_2";"P11_skin_1";"P11_skin_2";"even-mock3-1_S258_L001";"even-mock3-2_S282_L001";"even-mock3-3_S199_L001";"staggered-mock3-1_S270_L001";"staggered-mock3-2_S211_L001";"staggered-mock3-3_S223_L001"
+
+
+
+
+source("epidome/scripts/epidome_functions.R")
+
+ST_amplicon_table = read.table("epidome/DB/epidome_ST_amplicon_frequencies.txt",sep = "\t")
+epi01_table = read.table("190920_run1_yycH_seqtab_from_dada2.csv.classified.csv",sep = ";",header=TRUE,row.names=1)
+epi02_table = read.table("190920_run1_G216_seqtab_from_dada2.csv.classified.csv",sep = ";",header=TRUE,row.names=1)
+metadata_table = read.table("epidome/example_data/article_metadata.txt",header=TRUE,row.names=1)
+
+#epi01_mock_table = read.table("epidome/example_data/190920_run2_yycH_seqtab_from_dada2.csv.classified.csv",sep = ";",header=TRUE,row.names=1)
+#epi01_clinical_table = read.table("epidome/example_data/190920_run1_yycH_seqtab_from_dada2.csv.classified.csv",sep = ";",header=TRUE,row.names=1)
+#epi01_table = combine_ASV_tables(epi01_mock_table,epi01_clinical_table)
+
+
+
+epi01_mock_table = read.table("epidome/example_data/190920_run2_G216_seqtab_from_dada2.csv.classified.csv",sep =";",header=TRUE,row.names=1)
+epi02_mock_table = read.table("epidome/example_data/190920_run2_yycH_seqtab_from_dada2.csv.classified.csv",sep =";",header=TRUE,row.names=1)
+epi01_clinical_table = read.table("epidome/example_data/190920_run1_G216_seqtab_from_dada2.csv.classified.csv",sep = ";",header=TRUE,row.names=1)
+epi02_clinical_table = read.table("epidome/example_data/190920_run1_yycH_seqtab_from_dada2.csv.classified.csv",sep = ";",header=TRUE,row.names=1)
+epi01_table = combine_ASV_tables(epi01_mock_table,epi01_clinical_table)
+epi02_table = combine_ASV_tables(epi02_mock_table,epi02_clinical_table)
+
+
+epidome_object = setup_epidome_object(epi01_table,epi02_table)
+epidome_object = setup_epidome_object(epi01_table,epi02_table,metadata_table = metadata_table)
+
+primer_compare = compare_primer_output(epidome_object,color_variable = "sample.type")
+primer_compare$plot
+
+eo_ASV_combined = combine_ASVs_epidome(epidome_object)
+eo_filtered = filter_lowcount_samples_epidome(eo_ASV_combined,500,500)
+#[1] "4 low count samples removed from data: P01_skin_2 Extraction_control_2 P09_skin_2 P09_skin_1"   
+
+count_table = classify_epidome(eo_ASV_combined,ST_amplicon_table)
+#count_df_ordered = count_table[order(rowSums(count_table),decreasing = T),]
+#             staggered.mock3.3_S223_L001
+#Unclassified                       13403
+#218                                    0
+#215                                10232
+#73                                    59
+#87                                 14885
+#59                                     0
+#130                                    0
+#14                                  2598
+#-                                   2261
+#2                                      0
+#225                                    0
+#5                                   1009
+#297                                    0
+#384                                    0
+#184                                    0
+#355                                    0
+#307                                 2017
+
+
+#install.packages("pls")
+#library(pls)
+
+#count_table = count_table[-2,]
+#row.names(count_table) <- c("-", "ST297", "ST170", "ST73", "ST225", "ST673", "ST215", "ST19", "Unclassified") 
+#row.names(count_table) <- c("NA", "-", "X297", "X170", "X73", "X225", "X673", "X215", "X19", "Unclassified") 
+p = make_barplot_epidome(count_table,reorder=FALSE,normalize=TRUE)
+p = make_barplot_epidome(count_table,reorder=TRUE,normalize=TRUE)
+p
+
+
+eo_clinical = prune_by_variable_epidome(epidome_object,"sample.type",c("Clinical"))
+eo_mock = prune_by_variable_epidome(epidome_object,"sample.type",c("Mock community"))
+
+epidome_object_clinical_norm = normalize_epidome_object(eo_clinical) ### Normalize counts to percent
+
+PCA_patient_colored = plot_PCA_epidome(epidome_object_clinical_norm,color_variable = "patient.ID",colors = c(),plot_ellipse = FALSE)
+PCA_patient_colored + ggtitle("PCA plot of nose and skin samples colored by subject")
+PCA_sample_site_colored = plot_PCA_epidome(epidome_object_clinical_norm,color_variable = "sample.site",colors = c("Red","Blue"),plot_ellipse = TRUE)
+PCA_sample_site_colored + ggtitle("PCA plot of nose and skin samples colored by sampling site")
+
+eo_filter_lowcount = filter_lowcount_samples_epidome(epidome_object,p1_threshold = 500,p2_threshold = 500)
+eo_filter_ASVs = epidome_filtered_ASVs = filter_lowcount_ASVs_epidome(epidome_object,percent_threshold = 1)
+epidome_object_normalized = normalize_epidome_object(epidome_object)
+epidome_object_ASV_combined = combine_ASVs_epidome(epidome_object)
+epidome_object_clinical = prune_by_variable_epidome(epidome_object,variable_name = "sample.type",variable_values = c("Clinical"))
+epidome_object_mock = prune_by_variable_epidome(epidome_object,variable_name = "sample.type",variable_values = c("Mock community"))
+
+eo_ASV_combined = combine_ASVs_epidome(epidome_object_mock)
+count_table = classify_epidome(eo_ASV_combined,ST_amplicon_table)
+p = make_barplot_epidome(count_table,reorder=TRUE,normalize=TRUE)
