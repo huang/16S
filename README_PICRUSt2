@@ -1,0 +1,372 @@
+# ------------------
+# ---- PiCRUST2 ----
+conda create -n picrust2 -c bioconda -c conda-forge picrust2=2.2.0_b
+conda activate picrust2
+
+
+#https://github.com/picrust/picrust2/wiki/PICRUSt2-Tutorial-(v2.2.0-beta)#minimum-requirements-to-run-full-tutorial
+
+# --1-- Input data
+  - metadata.tsv == map_corrected.txt
+  - seqs.fna     == seqs.fna
+  - table.biom   == table_even22998.biom
+
+2114947 Sep 11 18:09 otu_table_mc2_w_tax_no_pynast_failures.biom
+2114947 Sep 12 10:13 table_mc22998.biom
+1697303 Sep 12 10:13 table_even22998.biom
+
+#Importantly, the input table should contain read counts rather than relative abundance. You can input a rarefied table, but that is not required.
+biom head -i table_even22998.biom
+biom summarize-table -i table_even22998.biom  # all are 22998
+biom convert -i table_mc22998.biom -o table_mc22998.tsv --to-tsv   # 8538 records
+biom convert -i table_even22998.biom -o table_even22998.tsv --to-tsv
+
+
+mkdir picrust2_out_pipeline
+cd picrust2_out_pipeline
+
+#insert reads into reference tree using EPA-NG
+cp ../clustering/rep_set.fna ./
+grep ">" rep_set.fna | wc -l  #8544
+vim table_even22998.tsv       #6806
+
+samtools faidx rep_set.fna
+cut -f1-1 table_even22998.tsv > table_even22998.id
+#manually modify table_even22998.id by replacing "\n" with " >> seqs.fna\nsamtools faidx rep_set.fna "
+
+rm -rf intermediate/
+place_seqs.py -s seqs.fna -o out.tre -p 15 --intermediate intermediate/place_seqs
+
+#castor: Efficient Phylogenetics on Large Trees
+#https://github.com/picrust/picrust2/wiki/Hidden-state-prediction
+
+hsp.py -i 16S -t out.tre -o 16S_predicted_and_nsti.tsv.gz -p 15 -n
+hsp.py -i COG -t out.tre -o COG_predicted.tsv.gz -p 15
+hsp.py -i PFAM -t out.tre -o PFAM_predicted.tsv.gz -p 15
+hsp.py -i KO -t out.tre -o KO_predicted.tsv.gz -p 15
+hsp.py -i EC -t out.tre -o EC_predicted.tsv.gz -p 15
+hsp.py -i TIGRFAM -t out.tre -o TIGRFAM_predicted.tsv.gz -p 15
+hsp.py -i PHENO -t out.tre -o PHENO_predicted.tsv.gz -p 15
+
+MyData <- read.csv(file="./COG_predicted.tsv", header=TRUE, sep="\t", row.names=1)   #6806 4598  e.g. COG5665
+MyData <- read.csv(file="./PFAM_predicted.tsv", header=TRUE, sep="\t", row.names=1)  #6806 11089 e.g. PF17225
+MyData <- read.csv(file="./KO_predicted.tsv", header=TRUE, sep="\t", row.names=1)    #6806 10543 e.g. K19791
+MyData <- read.csv(file="./EC_predicted.tsv", header=TRUE, sep="\t", row.names=1)    #6806 2913  e.g. EC.6.6.1.2
+MyData <- read.csv(file="./16S_predicted.tsv", header=TRUE, sep="\t", row.names=1)   #6806    1     e.g. X16S_rRNA_Count
+MyData <- read.csv(file="./TIGRFAM_predicted.tsv", header=TRUE, sep="\t", row.names=1)  #6806 4287  e.g. TIGR04571
+MyData <- read.csv(file="./PHENO_predicted.tsv", header=TRUE, sep="\t", row.names=1)    #6806   41  e.g. Use_of_nitrate_as_electron_acceptor, Xylose_utilizing
+ [1] Acetyl.CoA_assimilation                                 
+ [2] Aerobe                                                  
+ [3] Biotin_prototroph                                       
+ [4] Carbon_fixation                                         
+ [5] Coenzyme_A_prototroph                                   
+ [6] Denitrifier                                             
+ [7] Dissimilatory_sulfate_reduction                         
+ [8] Fructose_utilizing                                      
+ [9] Galactose_utilizing                                     
+[10] Glucose_utilizing                                       
+[11] Glycine_prototroph                                      
+[12] L.alanine_prototroph                                    
+[13] L.arabinose_utilizing                                   
+[14] L.arginine_prototroph                                   
+[15] L.asparagine_prototroph                                 
+[16] L.aspartate_prototroph                                  
+[17] L.cysteine_prototroph                                   
+[18] L.glutamate_prototroph                                  
+[19] L.glutamine_prototroph                                  
+[20] L.histidine_prototroph                                  
+[21] L.isoleucine_prototroph                                 
+[22] L.leucine_prototroph                                    
+[23] L.lysine_prototroph                                     
+[24] L.methionine_synthesis_with_homocysteine_as_intermediate
+[25] L.methionine_synthesis_with_methanethiol                
+[26] L.phenylalanine_prototroph                              
+[27] L.proline_prototroph                                    
+[28] L.selenocysteine_synthesis                              
+[29] L.serine_prototroph                                     
+[30] L.threonine_prototroph                                  
+[31] L.tryptophan_prototroph                                 
+[32] L.tyrosine_prototroph                                   
+[33] L.valine_prototroph                                     
+[34] Lactose_utilizing                                       
+[35] Maltose_utilizing                                       
+[36] Nitrogen_fixer                                          
+[37] Sucrose_utilizing                                       
+[38] Sulfur_reducer                                          
+[39] Trehalose_utilizing                                     
+[40] Use_of_nitrate_as_electron_acceptor                     
+[41] Xylose_utilizing
+
+#Generate metagenome predictions using EC numbers https://en.wikipedia.org/wiki/List_of_enzymes#Category:EC_1.1_(act_on_the_CH-OH_group_of_donors)
+metagenome_pipeline.py -i table_even22998.biom -m 16S_predicted_and_nsti.tsv.gz -f COG_predicted.tsv.gz -o COG_metagenome_out --strat_out
+metagenome_pipeline.py -i table_even22998.biom -m 16S_predicted_and_nsti.tsv.gz -f EC_predicted.tsv.gz -o EC_metagenome_out --strat_out
+metagenome_pipeline.py -i table_even22998.biom -m 16S_predicted_and_nsti.tsv.gz -f KO_predicted.tsv.gz -o KO_metagenome_out --strat_out
+metagenome_pipeline.py -i table_even22998.biom -m 16S_predicted_and_nsti.tsv.gz -f PFAM_predicted.tsv.gz -o PFAM_metagenome_out --strat_out
+metagenome_pipeline.py -i table_even22998.biom -m 16S_predicted_and_nsti.tsv.gz -f TIGRFAM_predicted.tsv.gz -o TIGRFAM_metagenome_out --strat_out
+add_descriptions.py -i COG_metagenome_out/pred_metagenome_unstrat.tsv.gz -m COG -o COG_metagenome_out/pred_metagenome_unstrat_descrip.tsv.gz
+add_descriptions.py -i EC_metagenome_out/pred_metagenome_unstrat.tsv.gz -m EC -o EC_metagenome_out/pred_metagenome_unstrat_descrip.tsv.gz
+add_descriptions.py -i KO_metagenome_out/pred_metagenome_unstrat.tsv.gz -m KO -o KO_metagenome_out/pred_metagenome_unstrat_descrip.tsv.gz   # EC and METACYC is a pair, EC for gene_annotation and METACYC for pathway_annotation
+add_descriptions.py -i PFAM_metagenome_out/pred_metagenome_unstrat.tsv.gz -m PFAM -o PFAM_metagenome_out/pred_metagenome_unstrat_descrip.tsv.gz
+add_descriptions.py -i TIGRFAM_metagenome_out/pred_metagenome_unstrat.tsv.gz -m TIGRFAM -o TIGRFAM_metagenome_out/pred_metagenome_unstrat_descrip.tsv.gz
+
+
+
+
+# ---- Pathway-level inference ----
+pathway_pipeline.py -i EC_metagenome_out/pred_metagenome_contrib.tsv.gz -o pathways_out -p 15
+add_descriptions.py -i pathways_out/path_abun_unstrat.tsv.gz -m METACYC -o pathways_out/path_abun_unstrat_descrip.tsv.gz
+gunzip path_abun_unstrat_descrip.tsv.gz
+
+#Error - no rows remain after regrouping input table. The default pathway and regroup mapfiles are meant for EC numbers. Note that KEGG pathways are not supported since KEGG is a closed-source database, but you can input custom pathway mapfiles if you have access. If you are using a custom function database did you mean to set the --no-regroup flag and/or change the default pathways mapfile used?
+#TODO TOMORROW HERE!!!! --> ERROR! --> USE the METACYC for downstream analyses!!!
+pathway_pipeline.py -i COG_metagenome_out/pred_metagenome_contrib.tsv.gz -o KEGG_pathways_out -p 15 --no_regroup --map /home/jhuang/anaconda3/envs/picrust2/lib/python3.6/site-packages/picrust2/default_files/pathway_mapfiles/KEGG_pathways_to_KO.tsv
+add_descriptions.py -i pathways_out/path_abun_unstrat.tsv.gz -o KEGG_pathways_out/path_abun_unstrat_descrip.tsv.gz --custom_map_table /home/jhuang/anaconda3/envs/picrust2/lib/python3.6/site-packages/picrust2/default_files/description_mapfiles/KEGG_pathways_info.tsv.gz
+
+
+#Mapping predicted KO abundances to legacy KEGG pathways (with stratified output that represents contributions to community-wide abundances):
+pathway_pipeline.py -i KO_metagenome_out/pred_metagenome_strat.tsv.gz -o KEGG_pathways_out --no_regroup --map /home/jhuang/anaconda3/envs/picrust2/lib/python3.6/site-packages/picrust2/default_files/pathway_mapfiles/KEGG_pathways_to_KO.tsv
+
+#Map EC numbers to MetaCyc pathways and get stratified output corresponding to contribution of predicted gene family abundances within each predicted genome:
+pathway_pipeline.py -i EC_metagenome_out/pred_metagenome_unstrat.tsv.gz -o pathways_out_per_seq --per_sequence_contrib --per_sequence_abun EC_metagenome_out/seqtab_norm.tsv.gz --per_sequence_function EC_predicted.tsv.gz
+
+/home/jhuang/anaconda3/envs/picrust2/lib/python3.6/site-packages/picrust2/default_files/pathway_mapfiles
+
+
+
+
+
+
+
+################## Visualization ##################
+https://github.com/picrust/picrust2/wiki/STAMP-example
+# -- 1, STAMP --
+conda deactivate
+conda install -c bioconda stamp
+
+#conda install -c bioconda stamp
+#sudo pip install pyqi
+#sudo apt-get install libblas-dev liblapack-dev gfortran
+#sudo apt-get install freetype* python-pip python-dev python-numpy python-scipy python-matplotlib
+#sudo pip install STAMP
+#conda install -c bioconda stamp
+
+conda create -n stamp -c bioconda/label/cf201901 stamp
+brew install pyqt
+
+#DEBUG the environment
+conda install pyqt=4
+#conda install icu=56
+
+
+
+e.g. path_abun_unstrat_descrip.tsv.gz and metadata.tsv from the tutorial)
+cut -d$'\t' -f1 map_corrected.txt > 1
+cut -d$'\t' -f5 map_corrected.txt > 5
+cut -d$'\t' -f6 map_corrected.txt > 6
+paste -d$'\t' 1 5 > 1_5
+paste -d$'\t' 1_5 6 > metadata.tsv
+#SampleID --> SampleID
+SampleID	Facility	Genotype
+100CHE6KO	PaloAlto	KO
+101CHE6WT	PaloAlto	WT
+
+
+TODOs: the ERROR beseitigen!
+#Error: Failed to download resource "qt"
+#Download failed: https://www.mirrorservice.org/sites/download.qt-project.org/official_releases/qt/4.8/4.8.7/qt-everywhere-opensource-src-4.8.7.tar.gz
+#(stamp) jhuang@hamburg:~/Downloads$ STAMP
+#Traceback (most recent call last):
+#  File "/home/jhuang/anaconda3/envs/stamp/bin/STAMP", line 32, in <module>
+#    from stamp import STAMP
+#  File "/home/jhuang/anaconda3/envs/stamp/lib/python2.7/site-packages/stamp/STAMP.py", line 38, in <module>
+#    from stamp.GUI.plotDlg import PlotDlg  # forward reference so py2app recognizes this file is required
+#  File "/home/jhuang/anaconda3/envs/stamp/lib/python2.7/site-packages/stamp/GUI/plotDlg.py", line 24, in <module>
+#    from PyQt4 import QtGui, QtCore
+#ImportError: No module named PyQt4
+
+
+
+
+# -- 2, ALDEx2 --
+https://bioconductor.org/packages/release/bioc/html/ALDEx2.html
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    
+                    
+
+
+
+
+
+
+
+                       
+                       
+
+#### TRASH ####
+
+https://peerj.com/articles/5494.pdf  only conatins the information of
+
+
+#https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-15-122
+#Thorsten Bischler of University Hospital Würzburg
+
+#nearest-sequenced taxon index (NSTI) values for each ASV (specified by the -n option), which correspond to the branch length in the tree from the placed ASV to the nearest reference 16S sequence. This metric is a rough guide for how similar an ASV is to an existing reference sequence.
+
+# -- marker_predicted_and_nsti.tsv is the relationship between 16S_copy_number based on chrom_number --
+#The required input is the FASTA of the ASV sequences. The key output file is out.tre, which is a tree in newick format of your study ASVs and reference 16S sequences.
+#--> ASVs with a NSTI score above 2 are usually noise.
+hsp.py -i 16S -t out.tre -o marker_predicted_and_nsti.tsv.gz -p 15 -n
+
+
+# -- EC_predicted.tsv is the relationship between specific_gene_copy_number based on chrom_number --
+#EC numbers are a type of gene family defined based on the chemical reactions they catalyze. For instance, EC:1.1.1.1 corresponds to alcohol dehydrogenase. In this tutorial we are focusing on EC numbers since they can be used to infer MetaCyc pathway levels
+hsp.py -i EC -t out.tre -o EC_predicted.tsv.gz -p 15
+
+
+
+
+
+# ---- Generate metagenome predictions = ../table.biom -m marker_predicted_and_nsti.tsv.gz -f EC_predicted.tsv.gz ----
+# ---- Infer gene_family_copy_numbers per ASV (castor) (JUST divided by 16S_copy_number ----chrom_number----> multiply specific_gene_copy_number) ----
+# under DIR "~/DATA/Data_16S_Birgit_Leonie/ucrC97/chemerin_16S/picrust2_out_pipeline"
+metagenome_pipeline.py -i ../table.biom -m marker_predicted_and_nsti.tsv.gz -f EC_predicted.tsv.gz -o EC_metagenome_out --strat_out
+
+calcate relations of gene_family and taxon relationship
+We already know in a specific species, there are 14 genes in ABC transporter pathways, 20 genes joining MAPK signaling pathway, ...
+
+
+zless -S
+
+convert_table.py EC_metagenome_out/pred_metagenome_contrib.tsv.gz -c contrib_to_legacy -o EC_metagenome_out/pred_metagenome_contrib.legacy.tsv.gz
+
+sample  function        taxon   taxon_abun      taxon_rel_abun  genome_function_count   taxon_function_abun     taxon_rel_function_abun
+100CHE6KO       EC:1.1.1.1      20e568023c10eaac834f1c110aacea18        26.0    1.9607843137254901      2       52.0    3.9215686274509802
+100CHE6KO       EC:1.1.1.1      288c8176059111c4c7fdfb0cd5afce64        25.5    1.9230769230769231      1       25.5    1.9230769230769231
+100CHE6KO       EC:1.1.1.1      343635a5abc8d3b1dbd2b305eb0efe32        16.0    1.206636500754148       1       16.0    1.206636500754148
+
+Gene    Sample  OTU     OTUAbundanceInSample    GeneCountPerGenome      CountContributedByOTU
+EC:1.1.1.1      100CHE6KO       20e568023c10eaac834f1c110aacea18        1.96078431372549        2       3.92156862745098
+EC:1.1.1.1      100CHE6KO       288c8176059111c4c7fdfb0cd5afce64        1.9230769230769231      1       1.9230769230769231
+EC:1.1.1.1      100CHE6KO       343635a5abc8d3b1dbd2b305eb0efe32        1.206636500754148       1       1.206636500754148
+
+
+#http://supfam.org/SUPERFAMILY/EC_supra.html
+pathway_pipeline.py -i EC_metagenome_out/pred_metagenome_contrib.tsv.gz -o pathways_out -p 1
+
+#http://huttenhower.sph.harvard.edu/humann2
+#HUMAnN is a pipeline for efficiently and accurately profiling the presence/absence and abundance of microbial pathways in a community from metagenomic or metatranscriptomic sequencing data (typically millions of short DNA/RNA reads). This process, referred to as functional profiling, aims to describe the metabolic potential of a microbial community and its members. More generally, functional profiling answers the question "What are the microbes in my community-of-interest doing (or capable of doing)?"
+#--> 這個可以用於　ANNA 的數據？
+                    
+                    
+add_descriptions.py -i EC_metagenome_out/pred_metagenome_unstrat.tsv.gz -m EC -o EC_metagenome_out/pred_metagenome_unstrat_descrip.tsv.gz
+add_descriptions.py -i pathways_out/path_abun_unstrat.tsv.gz -m METACYC -o pathways_out/path_abun_unstrat_descrip.tsv.gz
+
+#Note that the mapping of function ids to descriptions can also be found in the files within this folder of the PICRUSt2 repository: picrust2/picrust2/default_files/description_mapfiles/.
+#As mentioned above, there are many possible ways to analyze the PICRUSt2 output. STAMP is one tool that can be used that requires no background in scripting languages. This tool is very useful for visualizing microbiome data, but note that there are better alternatives for conducting statistical tests with compositional data (such as the ALDEx2 R package). If you would like to try out STAMP for visualizing the PICRUSt2 output, see here.
+
+
+
+
+
+
+
+
+
+
+PICRUSt2: An improved and extensible approach for metagenome inference
+Gavin M. Douglas, Vincent J. Maffei, Jesse Zaneveld, Svetlana N. Yurgel, James R. Brown, Christopher M. Taylor, Curtis Huttenhower, Morgan G. I. Langille
+bioRxiv 672295; doi: https://doi.org/10.1101/672295 
+
+                                
+TODOs:
+- DAMIAN von den 4 Proben.
+- 
+
+
+Das Verwaltungsgericht Hamburg stellt aktuelle Entscheidungen, die von allgemeinem Interesse sind, in einer Rechtsprechungsdatenbank zum Download zur Verfügung.
+Das Angebot entspricht insoweit dem Inhalt der (kostenpflichtigen) Datenbank "Landesrecht"der juris GmbH.
+Die aktuellen Presseerklärungen der hamburgischen Verwaltungsgerichte finden Sie hier.                    
+
+
+
+
+
+
+
+
+
+          
+
+                    
+
+--> to generate functional predictions from amplicon sequences
+phylogenetic placement of reads, each read will be placed in the phylogenetic tree.
+
+For phylogenetic placement of reads:
+    HMMER (website)
+    EPA-NG (paper, website)
+    gappa (paper, website).
+
+For hidden state prediction:
+    castor (paper, website)
+
+For pathway inference:
+    MinPath (paper, website)
+
+When running your data you can run the QIIME2 plugin of PICRUSt2 and use SEPP for read placement
+
+
+- 16S
+- unbiased
+- targeted capture
+- functional tar
+
+- for taxonomic analysis of metagenomes, we could perform it from both data-soure, from unbiased metagenomics and amplicon metagenomics.
+- for functional profiling of metagenomes, we could only perform it from unbiased metagenomics, since the amplicon metagenomics only sequencing the specific marker genes, which has the same function.
+We don't have a set of different geneset that we can compare.
+
+- However, there are also methods that can perform functional profiling based on the amplicon sequencing. 
+- I will give an example, how it works.
+
+- predict approximate functional potential of a community based on marker gene sequencing pforiles.
+
+
+#TODO: give an example of S16 taxonomic results, then extends the methods to functional profiling based on 16S
+wget http://kronos.pharmacology.dal.ca/public_files/tutorial_datasets/picrust2_tutorial_files/chemerin_16S.zip
+unzip chemerin_16S.zip
+cd chemerin_16S
+
+
+seqs.fna is ASV sequences which is denoised, it can also contain the OTU sequences that is not denoised.
+
+#This file contains the Amplicon Sequence Variants (ASVs) of 16S rRNA gene sequences found across the mouse stool samples --> all haplotypes
+biom -i table.biom
+biom summarize-table -i table.biom -o rich_sparse_otu_table_summary.txt
+
+By default, this reference tree is based on 20,000 16S sequences from genomes in the Integrated Microbial Genomes database.
+The place_seqs.py script performs this step, which specifically:
+  -1- Aligns your study ASVs with a multiple-sequence alignment of reference 16S sequences with HMMER.
+  -2- Find the most likely placements of your study ASVs in the reference tree with EPA-NG.
+  -3- Output a treefile with the most likely placement for each ASV as the new tips with GAPPA.
+
+
+#Erste Berufserfahrung im Bereich Business Intelligence, Data Analytics, Predictive Analytics, Tracking oder Big-Data Infrastruktur, gerne auch als Praktikum
+#Hohe E-Commerce-/Internetaffinität
+#Erfahrungen im Umgang mit Datenanalyse und Business Intelligence Tools (z.B. Tableau, Qlikview, QlikSense, Google Analytics), Programmierkenntnisse (z.B. Python, R) von Vorteil
+business intelligence software
+#Verhandlungssichere Deutsch- und Englischkenntnisse in Wort und Schrift
+
+#diff clustering/rep_set_headers_.fna core_diversity_e22998_Francesco_Exp17/table_mc22998_f1.tsv
+#rep_set.fna --> rep_set.tre
